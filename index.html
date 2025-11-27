@@ -924,6 +924,9 @@
                 return;
             }
             
+            const hoy = new Date();
+            const mesActual = hoy.getFullYear() * 12 + hoy.getMonth(); // Meses desde año 0
+            
             let html = `
                 <table>
                     <thead>
@@ -938,10 +941,20 @@
             `;
             
             cuotasData.forEach(c => {
-                const pagadas = parseInt(c.cuotasPagadas) || 0;
                 const total = parseInt(c.totalCuotas);
-                const restantes = total - pagadas;
-                const porcentaje = (pagadas / total) * 100;
+                
+                // Calcular cuántas cuotas ya pasaron según la fecha
+                const fechaInicio = new Date(c.fechaInicio);
+                const mesInicio = fechaInicio.getFullYear() * 12 + fechaInicio.getMonth();
+                
+                // Cuotas pagadas = meses transcurridos desde el inicio + 1 (la primera cuota es del mes de inicio)
+                let cuotasPagadasReal = mesActual - mesInicio + 1;
+                
+                // Limitar entre 1 y total
+                cuotasPagadasReal = Math.max(1, Math.min(cuotasPagadasReal, total));
+                
+                const restantes = total - cuotasPagadasReal;
+                const porcentaje = (cuotasPagadasReal / total) * 100;
                 const montoRestante = restantes * parseFloat(c.montoCuota);
                 
                 html += `
@@ -949,7 +962,7 @@
                         <td>${c.concepto}</td>
                         <td>$${parseFloat(c.montoCuota).toLocaleString('es-AR')}</td>
                         <td style="min-width: 150px;">
-                            <div>${pagadas}/${total}</div>
+                            <div>${cuotasPagadasReal}/${total}</div>
                             <div class="cuota-progress">
                                 <div class="cuota-progress-bar" style="width: ${porcentaje}%"></div>
                             </div>
@@ -1013,14 +1026,24 @@
             document.getElementById('stat-vario').textContent = `$${varioMes.toLocaleString('es-AR')}`;
             document.getElementById('stat-eventual').textContent = `$${eventualMes.toLocaleString('es-AR')}`;
             
-            // Cuotas
+            // Cuotas - calcular basado en fecha actual
+            const hoy = new Date();
+            const mesActualReporte = hoy.getFullYear() * 12 + hoy.getMonth();
+            
             const totalCuotasMes = cuotasData.reduce((sum, c) => sum + parseFloat(c.montoCuota), 0);
             const cuotasRemanentes = cuotasData.reduce((sum, c) => {
-                const restantes = parseInt(c.totalCuotas) - (parseInt(c.cuotasPagadas) || 0);
-                return sum + restantes;
+                const fechaInicio = new Date(c.fechaInicio);
+                const mesInicio = fechaInicio.getFullYear() * 12 + fechaInicio.getMonth();
+                const total = parseInt(c.totalCuotas);
+                let cuotasPagadasReal = Math.max(1, Math.min(mesActualReporte - mesInicio + 1, total));
+                return sum + (total - cuotasPagadasReal);
             }, 0);
             const montoRemanente = cuotasData.reduce((sum, c) => {
-                const restantes = parseInt(c.totalCuotas) - (parseInt(c.cuotasPagadas) || 0);
+                const fechaInicio = new Date(c.fechaInicio);
+                const mesInicio = fechaInicio.getFullYear() * 12 + fechaInicio.getMonth();
+                const total = parseInt(c.totalCuotas);
+                let cuotasPagadasReal = Math.max(1, Math.min(mesActualReporte - mesInicio + 1, total));
+                const restantes = total - cuotasPagadasReal;
                 return sum + (restantes * parseFloat(c.montoCuota));
             }, 0);
             
