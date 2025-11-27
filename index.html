@@ -578,9 +578,8 @@
             
             const año = hoy.getFullYear();
             const semana = getWeekNumber(hoy);
-            document.getElementById('filtro-semana').value = `${año}-W${semana.toString().padStart(2, '0')}`;
+            // Solo setear valores en Reportes, no en Listado
             document.getElementById('reporte-semana').value = `${año}-W${semana.toString().padStart(2, '0')}`;
-            document.getElementById('filtro-mes').value = `${año}-${(hoy.getMonth() + 1).toString().padStart(2, '0')}`;
             document.getElementById('reporte-mes').value = `${año}-${(hoy.getMonth() + 1).toString().padStart(2, '0')}`;
             
             cargarDatos();
