@@ -344,11 +344,55 @@
         .table-responsive {
             overflow-x: auto;
         }
+        
+        .overlay-loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        .overlay-loading.visible {
+            display: flex;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #00d9ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .overlay-loading p {
+            margin-top: 20px;
+            color: #00d9ff;
+            font-size: 1.1rem;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>💰 Gastos Ancaste</h1>
+        
+        <!-- Overlay de carga -->
+        <div id="overlay-loading" class="overlay-loading">
+            <div class="spinner"></div>
+            <p id="overlay-text">Procesando...</p>
+        </div>
         
         <div class="tabs">
             <button class="tab active" onclick="showTab('cargar')">Cargar Gasto</button>
@@ -586,6 +630,15 @@
             setTimeout(() => msg.className = 'mensaje', 3000);
         }
         
+        function mostrarOverlay(texto) {
+            document.getElementById('overlay-text').textContent = texto || 'Procesando...';
+            document.getElementById('overlay-loading').classList.add('visible');
+        }
+        
+        function ocultarOverlay() {
+            document.getElementById('overlay-loading').classList.remove('visible');
+        }
+        
         async function cargarDatos() {
             try {
                 const [gastosRes, cuotasRes] = await Promise.all([
@@ -635,6 +688,9 @@
                     return;
                 }
                 
+                // Mostrar overlay
+                mostrarOverlay('Agregando gasto en ' + totalCuotas + ' cuotas...');
+                
                 // Calcular monto cuota = monto total / cantidad de cuotas
                 const montoCuota = parseFloat(monto) / totalCuotas;
                 
@@ -664,19 +720,25 @@
                     document.getElementById('gasto-monto').value = '';
                     document.getElementById('gasto-concepto').value = '';
                     
+                    ocultarOverlay();
                     mostrarMensaje('Gasto en cuotas agregado correctamente', 'success');
                     cargarDatos();
                     
                 } catch (error) {
+                    ocultarOverlay();
                     mostrarMensaje('Error al agregar cuotas: ' + error, 'error');
                 }
                 
             } else {
                 // Gasto normal (no TC)
+                mostrarOverlay('Agregando gasto...');
+                
                 try {
                     const url = `${API_URL}?action=addGasto&fecha=${fecha}&monto=${monto}&tipo=${tipo}&categoria=${categoria}&extraordinario=${esEventual}&usuario=${encodeURIComponent(concepto)}`;
                     const res = await fetch(url);
                     const json = await res.json();
+                    
+                    ocultarOverlay();
                     
                     if (json.success) {
                         mostrarMensaje('Gasto agregado correctamente', 'success');
@@ -687,6 +749,7 @@
                         mostrarMensaje('Error: ' + json.error, 'error');
                     }
                 } catch (error) {
+                    ocultarOverlay();
                     mostrarMensaje('Error: ' + error, 'error');
                 }
             }
@@ -702,6 +765,8 @@
             }
             
             if (!confirm(mensaje)) return;
+            
+            mostrarOverlay('Eliminando...');
             
             try {
                 // Si es TC, eliminar todos los gastos con el mismo concepto base y la cuota asociada
@@ -735,18 +800,21 @@
                         await fetch(`${API_URL}?action=deleteCuota&row=${cuotaAsociada.row}`);
                     }
                     
+                    ocultarOverlay();
                     mostrarMensaje('Gasto y cuotas eliminados', 'success');
                     cargarDatos();
                 } else {
                     // Gasto normal, solo eliminar ese
                     const res = await fetch(`${API_URL}?action=deleteGasto&row=${row}`);
                     const json = await res.json();
+                    ocultarOverlay();
                     if (json.success) {
                         mostrarMensaje('Gasto eliminado', 'success');
                         cargarDatos();
                     }
                 }
             } catch (error) {
+                ocultarOverlay();
                 mostrarMensaje('Error: ' + error, 'error');
             }
         }
