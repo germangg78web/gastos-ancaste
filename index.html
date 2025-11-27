@@ -694,7 +694,7 @@
         
         async function eliminarGasto(row, tipo, concepto) {
             // Extraer el concepto base (sin el número de cuota)
-            const conceptoBase = concepto.replace(/\s*\(\d+\/\d+\)\s*$/, '');
+            const conceptoBase = concepto.replace(/\s*\(\d+\/\d+\)\s*$/, '').trim();
             
             let mensaje = '¿Eliminar este gasto?';
             if (tipo === 'TC' && conceptoBase && conceptoBase !== '-') {
@@ -706,15 +706,15 @@
             try {
                 // Si es TC, eliminar todos los gastos con el mismo concepto base y la cuota asociada
                 if (tipo === 'TC' && conceptoBase && conceptoBase !== '-') {
-                    // Buscar y eliminar la cuota
-                    const cuotaAsociada = cuotasData.find(c => c.concepto === conceptoBase);
-                    if (cuotaAsociada) {
-                        await fetch(`${API_URL}?action=deleteCuota&row=${cuotaAsociada.row}`);
-                    }
                     
-                    // Eliminar todos los gastos con el mismo concepto base
-                    const gastosRelacionados = gastosData.filter(g => {
-                        const conceptoGasto = (g.usuario || '').replace(/\s*\(\d+\/\d+\)\s*$/, '');
+                    // Eliminar todos los gastos con el mismo concepto base primero
+                    // Recargar datos para tener los rows actualizados
+                    const gastosRes = await fetch(`${API_URL}?action=getGastos`);
+                    const gastosJson = await gastosRes.json();
+                    const gastosActuales = gastosJson.data || [];
+                    
+                    const gastosRelacionados = gastosActuales.filter(g => {
+                        const conceptoGasto = (g.usuario || '').replace(/\s*\(\d+\/\d+\)\s*$/, '').trim();
                         return conceptoGasto === conceptoBase;
                     });
                     
@@ -723,6 +723,16 @@
                     
                     for (const gasto of gastosRelacionados) {
                         await fetch(`${API_URL}?action=deleteGasto&row=${gasto.row}`);
+                    }
+                    
+                    // Ahora eliminar la cuota (recargar cuotas para tener rows actualizados)
+                    const cuotasRes = await fetch(`${API_URL}?action=getCuotas`);
+                    const cuotasJson = await cuotasRes.json();
+                    const cuotasActuales = cuotasJson.data || [];
+                    
+                    const cuotaAsociada = cuotasActuales.find(c => c.concepto.trim() === conceptoBase);
+                    if (cuotaAsociada) {
+                        await fetch(`${API_URL}?action=deleteCuota&row=${cuotaAsociada.row}`);
                     }
                     
                     mostrarMensaje('Gasto y cuotas eliminados', 'success');
