@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gastos Ancaste</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+            color: #00d9ff;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .tab:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .tab.active {
+            background: #00d9ff;
+            color: #1a1a2e;
+        }
+        
+        .panel {
+            display: none;
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .panel.active {
+            display: block;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        label {
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+        
+        input, select {
+            padding: 12px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            font-size: 1rem;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #00d9ff;
+        }
+        
+        select option {
+            background: #1a1a2e;
+            color: #fff;
+        }
+        
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #00d9ff;
+            color: #1a1a2e;
+        }
+        
+        .btn-primary:hover {
+            background: #00b8d9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: #ff4757;
+            color: #fff;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+        }
+        
+        .btn-danger:hover {
+            background: #ff3344;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        th {
+            background: rgba(0, 217, 255, 0.2);
+            color: #00d9ff;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00d9ff;
+            margin-bottom: 8px;
+        }
+        
+        .stat-label {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        .chart-container {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .chart-title {
+            color: #00d9ff;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+        
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            height: 200px;
+            padding: 10px 0;
+        }
+        
+        .bar-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .bar {
+            width: 100%;
+            max-width: 60px;
+            background: linear-gradient(180deg, #00d9ff 0%, #0099cc 100%);
+            border-radius: 4px 4px 0 0;
+            transition: height 0.5s ease;
+        }
+        
+        .bar-label {
+            font-size: 0.75rem;
+            color: #aaa;
+            text-align: center;
+        }
+        
+        .bar-value {
+            font-size: 0.7rem;
+            color: #fff;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #aaa;
+        }
+        
+        .cuota-progress {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        
+        .cuota-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            transition: width 0.3s;
+        }
+        
+        .eventual-badge {
+            background: #ff4757;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+        
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+        
+        .mensaje {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .mensaje.success {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            display: block;
+        }
+        
+        .mensaje.error {
+            background: rgba(255, 71, 87, 0.2);
+            color: #ff4757;
+            display: block;
+        }
+        
+        .cuotas-section {
+            display: none;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .cuotas-section.visible {
+            display: block;
+        }
+        
+        .cuotas-section h3 {
+            color: #00d9ff;
+            margin-bottom: 15px;
+        }
+        
+        @media (max-width: 600px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            table {
+                font-size: 0.85rem;
+            }
+            
+            th, td {
+                padding: 8px 4px;
+            }
+            
+            .stat-value {
+                font-size: 1.5rem;
+            }
+        }
+        
+        .table-responsive {
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💰 Gastos Ancaste</h1>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('cargar')">Cargar Gasto</button>
+            <button class="tab" onclick="showTab('cuotas')">Cuotas</button>
+            <button class="tab" onclick="showTab('listado')">Listado</button>
+            <button class="tab" onclick="showTab('reportes')">Reportes</button>
+        </div>
+        
+        <div id="mensaje" class="mensaje"></div>
+        
+        <!-- Panel Cargar Gasto -->
+        <div id="panel-cargar" class="panel active">
+            <h2 style="margin-bottom: 20px; color: #00d9ff;">Nuevo Gasto</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="gasto-fecha">
+                </div>
+                <div class="form-group">
+                    <label>Monto ($)</label>
+                    <input type="number" id="gasto-monto" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Tipo</label>
+                    <select id="gasto-tipo" onchange="toggleCuotasSection()">
+                        <option value="BV">Billetera Virtual</option>
+                        <option value="TC">Tarjeta Crédito</option>
+                        <option value="Efectivo">Efectivo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Categoría</label>
+                    <select id="gasto-categoria">
+                        <option value="Vario">Vario</option>
+                        <option value="Eventual">Eventual</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Sección Cuotas (solo visible con TC) -->
+            <div id="cuotas-section" class="cuotas-section">
+                <h3>Datos de Cuotas</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Concepto</label>
+                        <input type="text" id="cuota-concepto" placeholder="Descripción de la compra">
+                    </div>
+                    <div class="form-group">
+                        <label>Monto Cuota ($)</label>
+                        <input type="number" id="cuota-monto" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Total Cuotas</label>
+                        <input type="number" id="cuota-total" placeholder="12">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha Inicio</label>
+                        <input type="date" id="cuota-fecha">
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="agregarGasto()">Agregar Gasto</button>
+        </div>
+        
+        <!-- Panel Cuotas -->
+        <div id="panel-cuotas" class="panel">
+            <h2 style="margin-bottom: 20px; color: #00d9ff;">Cuotas Activas</h2>
+            <div id="lista-cuotas" class="table-responsive">
+                <p class="loading">Cargando cuotas...</p>
+            </div>
+        </div>
+        
+        <!-- Panel Listado -->
+        <div id="panel-listado" class="panel">
+            <h2 style="margin-bottom: 20px; color: #00d9ff;">Listado de Gastos</h2>
+            <div class="form-grid" style="margin-bottom: 20px;">
+                <div class="form-group">
+                    <label>Filtrar por semana</label>
+                    <input type="week" id="filtro-semana" onchange="filtrarGastos()">
+                </div>
+                <div class="form-group">
+                    <label>Filtrar por mes</label>
+                    <input type="month" id="filtro-mes" onchange="filtrarGastos()">
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary" onclick="limpiarFiltros()">Limpiar Filtros</button>
+                </div>
+            </div>
+            <div id="lista-gastos" class="table-responsive">
+                <p class="loading">Cargando gastos...</p>
+            </div>
+        </div>
+        
+        <!-- Panel Reportes -->
+        <div id="panel-reportes" class="panel">
+            <h2 style="margin-bottom: 20px; color: #00d9ff;">Reportes</h2>
+            
+            <div class="form-grid" style="margin-bottom: 20px;">
+                <div class="form-group">
+                    <label>Seleccionar semana</label>
+                    <input type="week" id="reporte-semana" onchange="actualizarReportes()">
+                </div>
+                <div class="form-group">
+                    <label>Seleccionar mes</label>
+                    <input type="month" id="reporte-mes" onchange="actualizarReportes()">
+                </div>
+            </div>
+            
+            <div class="stats-grid" id="stats-container">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-semana">$0</div>
+                    <div class="stat-label">Total Semana</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-mes">$0</div>
+                    <div class="stat-label">Total Mes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-diario-semana">$0</div>
+                    <div class="stat-label">Promedio Diario (Semana)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-diario-mes">$0</div>
+                    <div class="stat-label">Promedio Diario (Mes)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-vario">$0</div>
+                    <div class="stat-label">Gastos Varios</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-eventual">$0</div>
+                    <div class="stat-label">Gastos Eventuales</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-cuotas">$0</div>
+                    <div class="stat-label">Gastos en Cuotas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-cuotas-remanentes">0</div>
+                    <div class="stat-label">Cuotas Remanentes</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">Gastos por Día de la Semana</div>
+                <div class="bar-chart" id="chart-dias"></div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #00d9ff;"></div>
+                        <span>Vario</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ff4757;"></div>
+                        <span>Eventual</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #00ff88;"></div>
+                        <span>Cuota</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">Distribución por Categoría (Mes)</div>
+                <div id="chart-categorias" style="display: flex; justify-content: space-around; padding: 20px;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbyR5FHKHUCUc6B5JTdVlmTDlyeGLvVJN-21E0BquDP_DWhkS_0IqLda2389IVqq3r6f/exec';
+        
+        let gastosData = [];
+        let cuotasData = [];
+        
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            const hoy = new Date();
+            document.getElementById('gasto-fecha').valueAsDate = hoy;
+            document.getElementById('cuota-fecha').valueAsDate = hoy;
+            
+            const año = hoy.getFullYear();
+            const semana = getWeekNumber(hoy);
+            document.getElementById('filtro-semana').value = `${año}-W${semana.toString().padStart(2, '0')}`;
+            document.getElementById('reporte-semana').value = `${año}-W${semana.toString().padStart(2, '0')}`;
+            document.getElementById('filtro-mes').value = `${año}-${(hoy.getMonth() + 1).toString().padStart(2, '0')}`;
+            document.getElementById('reporte-mes').value = `${año}-${(hoy.getMonth() + 1).toString().padStart(2, '0')}`;
+            
+            cargarDatos();
+        });
+        
+        function getWeekNumber(d) {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+        
+        function toggleCuotasSection() {
+            const tipo = document.getElementById('gasto-tipo').value;
+            const section = document.getElementById('cuotas-section');
+            if (tipo === 'TC') {
+                section.classList.add('visible');
+            } else {
+                section.classList.remove('visible');
+            }
+        }
+        
+        function showTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(`panel-${tab}`).classList.add('active');
+            
+            if (tab === 'listado') renderGastos();
+            if (tab === 'cuotas') renderCuotas();
+            if (tab === 'reportes') actualizarReportes();
+        }
+        
+        function mostrarMensaje(texto, tipo) {
+            const msg = document.getElementById('mensaje');
+            msg.textContent = texto;
+            msg.className = `mensaje ${tipo}`;
+            setTimeout(() => msg.className = 'mensaje', 3000);
+        }
+        
+        async function cargarDatos() {
+            try {
+                const [gastosRes, cuotasRes] = await Promise.all([
+                    fetch(`${API_URL}?action=getGastos`),
+                    fetch(`${API_URL}?action=getCuotas`)
+                ]);
+                
+                const gastosJson = await gastosRes.json();
+                const cuotasJson = await cuotasRes.json();
+                
+                if (gastosJson.success) gastosData = gastosJson.data;
+                if (cuotasJson.success) cuotasData = cuotasJson.data;
+                
+                renderGastos();
+                renderCuotas();
+                actualizarReportes();
+            } catch (error) {
+                mostrarMensaje('Error al cargar datos: ' + error, 'error');
+            }
+        }
+        
+        async function agregarGasto() {
+            const fecha = document.getElementById('gasto-fecha').value;
+            const monto = document.getElementById('gasto-monto').value;
+            const tipo = document.getElementById('gasto-tipo').value;
+            const categoria = document.getElementById('gasto-categoria').value;
+            const esEventual = categoria === 'Eventual' ? 'X' : '';
+            
+            if (!fecha || !monto) {
+                mostrarMensaje('Completá fecha y monto', 'error');
+                return;
+            }
+            
+            // Si es TC, también agregar la cuota
+            if (tipo === 'TC') {
+                const concepto = document.getElementById('cuota-concepto').value;
+                const montoCuota = document.getElementById('cuota-monto').value;
+                const totalCuotas = document.getElementById('cuota-total').value;
+                const fechaCuota = document.getElementById('cuota-fecha').value;
+                
+                if (!concepto || !montoCuota || !totalCuotas) {
+                    mostrarMensaje('Completá los datos de la cuota', 'error');
+                    return;
+                }
+                
+                try {
+                    // Agregar cuota
+                    const urlCuota = `${API_URL}?action=addCuota&concepto=${encodeURIComponent(concepto)}&montoCuota=${montoCuota}&totalCuotas=${totalCuotas}&fechaInicio=${fechaCuota}&cuotasPagadas=0&usuario=`;
+                    await fetch(urlCuota);
+                    
+                    // Limpiar campos de cuota
+                    document.getElementById('cuota-concepto').value = '';
+                    document.getElementById('cuota-monto').value = '';
+                    document.getElementById('cuota-total').value = '';
+                } catch (error) {
+                    mostrarMensaje('Error al agregar cuota: ' + error, 'error');
+                    return;
+                }
+            }
+            
+            try {
+                const url = `${API_URL}?action=addGasto&fecha=${fecha}&monto=${monto}&tipo=${tipo}&categoria=${categoria}&extraordinario=${esEventual}&usuario=`;
+                const res = await fetch(url);
+                const json = await res.json();
+                
+                if (json.success) {
+                    mostrarMensaje('Gasto agregado correctamente', 'success');
+                    document.getElementById('gasto-monto').value = '';
+                    cargarDatos();
+                } else {
+                    mostrarMensaje('Error: ' + json.error, 'error');
+                }
+            } catch (error) {
+                mostrarMensaje('Error: ' + error, 'error');
+            }
+        }
+        
+        async function eliminarGasto(row) {
+            if (!confirm('¿Eliminar este gasto?')) return;
+            
+            try {
+                const res = await fetch(`${API_URL}?action=deleteGasto&row=${row}`);
+                const json = await res.json();
+                if (json.success) {
+                    mostrarMensaje('Gasto eliminado', 'success');
+                    cargarDatos();
+                }
+            } catch (error) {
+                mostrarMensaje('Error: ' + error, 'error');
+            }
+        }
+        
+        async function eliminarCuota(row) {
+            if (!confirm('¿Eliminar esta cuota?')) return;
+            
+            try {
+                const res = await fetch(`${API_URL}?action=deleteCuota&row=${row}`);
+                const json = await res.json();
+                if (json.success) {
+                    mostrarMensaje('Cuota eliminada', 'success');
+                    cargarDatos();
+                }
+            } catch (error) {
+                mostrarMensaje('Error: ' + error, 'error');
+            }
+        }
+        
+        async function actualizarCuotasPagadas(row, pagadas, total) {
+            const nuevas = Math.min(parseInt(pagadas) + 1, parseInt(total));
+            
+            try {
+                const res = await fetch(`${API_URL}?action=updateCuotasPagadas&row=${row}&pagadas=${nuevas}`);
+                const json = await res.json();
+                if (json.success) {
+                    mostrarMensaje('Cuota actualizada', 'success');
+                    cargarDatos();
+                }
+            } catch (error) {
+                mostrarMensaje('Error: ' + error, 'error');
+            }
+        }
+        
+        function renderGastos() {
+            const container = document.getElementById('lista-gastos');
+            let gastosFiltrados = [...gastosData];
+            
+            const filtroSemana = document.getElementById('filtro-semana').value;
+            const filtroMes = document.getElementById('filtro-mes').value;
+            
+            if (filtroSemana) {
+                const [año, semana] = filtroSemana.split('-W');
+                gastosFiltrados = gastosFiltrados.filter(g => {
+                    const fecha = new Date(g.fecha);
+                    return fecha.getFullYear() == año && getWeekNumber(fecha) == parseInt(semana);
+                });
+            } else if (filtroMes) {
+                const [año, mes] = filtroMes.split('-');
+                gastosFiltrados = gastosFiltrados.filter(g => {
+                    const fecha = new Date(g.fecha);
+                    return fecha.getFullYear() == año && (fecha.getMonth() + 1) == parseInt(mes);
+                });
+            }
+            
+            if (gastosFiltrados.length === 0) {
+                container.innerHTML = '<p class="loading">No hay gastos registrados</p>';
+                return;
+            }
+            
+            gastosFiltrados.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+            
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Monto</th>
+                            <th>Tipo</th>
+                            <th>Categoría</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            gastosFiltrados.forEach(g => {
+                const fecha = new Date(g.fecha).toLocaleDateString('es-AR');
+                const tipoLabel = g.tipo === 'BV' ? 'Billetera Virtual' : g.tipo === 'TC' ? 'Tarjeta Crédito' : g.tipo;
+                html += `
+                    <tr>
+                        <td>${fecha}</td>
+                        <td>$${parseFloat(g.monto).toLocaleString('es-AR')}</td>
+                        <td>${tipoLabel}</td>
+                        <td>${g.categoria} ${g.categoria === 'Eventual' ? '<span class="eventual-badge">E</span>' : ''}</td>
+                        <td><button class="btn btn-danger btn-small" onclick="eliminarGasto(${g.row})">X</button></td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            
+            const total = gastosFiltrados.reduce((sum, g) => sum + parseFloat(g.monto), 0);
+            html += `<p style="text-align: right; margin-top: 15px; font-size: 1.1rem;">Total: <strong>$${total.toLocaleString('es-AR')}</strong></p>`;
+            
+            container.innerHTML = html;
+        }
+        
+        function renderCuotas() {
+            const container = document.getElementById('lista-cuotas');
+            
+            if (cuotasData.length === 0) {
+                container.innerHTML = '<p class="loading">No hay cuotas registradas</p>';
+                return;
+            }
+            
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Concepto</th>
+                            <th>Cuota</th>
+                            <th>Progreso</th>
+                            <th>Restante</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            cuotasData.forEach(c => {
+                const pagadas = parseInt(c.cuotasPagadas) || 0;
+                const total = parseInt(c.totalCuotas);
+                const restantes = total - pagadas;
+                const porcentaje = (pagadas / total) * 100;
+                const montoRestante = restantes * parseFloat(c.montoCuota);
+                
+                html += `
+                    <tr>
+                        <td>${c.concepto}</td>
+                        <td>$${parseFloat(c.montoCuota).toLocaleString('es-AR')}</td>
+                        <td style="min-width: 150px;">
+                            <div>${pagadas}/${total}</div>
+                            <div class="cuota-progress">
+                                <div class="cuota-progress-bar" style="width: ${porcentaje}%"></div>
+                            </div>
+                        </td>
+                        <td>$${montoRestante.toLocaleString('es-AR')}</td>
+                        <td>
+                            <button class="btn btn-primary btn-small" onclick="actualizarCuotasPagadas(${c.row}, ${pagadas}, ${total})" ${pagadas >= total ? 'disabled' : ''}>+1</button>
+                            <button class="btn btn-danger btn-small" onclick="eliminarCuota(${c.row})">X</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        function filtrarGastos() {
+            renderGastos();
+        }
+        
+        function limpiarFiltros() {
+            document.getElementById('filtro-semana').value = '';
+            document.getElementById('filtro-mes').value = '';
+            renderGastos();
+        }
+        
+        function actualizarReportes() {
+            const semanaInput = document.getElementById('reporte-semana').value;
+            const mesInput = document.getElementById('reporte-mes').value;
+            
+            let gastosSemana = [];
+            let gastosMes = [];
+            
+            if (semanaInput) {
+                const [año, semana] = semanaInput.split('-W');
+                gastosSemana = gastosData.filter(g => {
+                    const fecha = new Date(g.fecha);
+                    return fecha.getFullYear() == año && getWeekNumber(fecha) == parseInt(semana);
+                });
+            }
+            
+            if (mesInput) {
+                const [año, mes] = mesInput.split('-');
+                gastosMes = gastosData.filter(g => {
+                    const fecha = new Date(g.fecha);
+                    return fecha.getFullYear() == año && (fecha.getMonth() + 1) == parseInt(mes);
+                });
+            }
+            
+            const totalSemana = gastosSemana.reduce((sum, g) => sum + parseFloat(g.monto), 0);
+            const totalMes = gastosMes.reduce((sum, g) => sum + parseFloat(g.monto), 0);
+            
+            const diasEnMes = mesInput ? new Date(mesInput.split('-')[0], mesInput.split('-')[1], 0).getDate() : 30;
+            
+            document.getElementById('stat-semana').textContent = `$${totalSemana.toLocaleString('es-AR')}`;
+            document.getElementById('stat-mes').textContent = `$${totalMes.toLocaleString('es-AR')}`;
+            document.getElementById('stat-diario-semana').textContent = `$${Math.round(totalSemana / 7).toLocaleString('es-AR')}`;
+            document.getElementById('stat-diario-mes').textContent = `$${Math.round(totalMes / diasEnMes).toLocaleString('es-AR')}`;
+            
+            const varioMes = gastosMes.filter(g => g.categoria === 'Vario').reduce((sum, g) => sum + parseFloat(g.monto), 0);
+            const eventualMes = gastosMes.filter(g => g.categoria === 'Eventual').reduce((sum, g) => sum + parseFloat(g.monto), 0);
+            
+            document.getElementById('stat-vario').textContent = `$${varioMes.toLocaleString('es-AR')}`;
+            document.getElementById('stat-eventual').textContent = `$${eventualMes.toLocaleString('es-AR')}`;
+            
+            // Cuotas
+            const totalCuotasMes = cuotasData.reduce((sum, c) => sum + parseFloat(c.montoCuota), 0);
+            const cuotasRemanentes = cuotasData.reduce((sum, c) => {
+                const restantes = parseInt(c.totalCuotas) - (parseInt(c.cuotasPagadas) || 0);
+                return sum + restantes;
+            }, 0);
+            const montoRemanente = cuotasData.reduce((sum, c) => {
+                const restantes = parseInt(c.totalCuotas) - (parseInt(c.cuotasPagadas) || 0);
+                return sum + (restantes * parseFloat(c.montoCuota));
+            }, 0);
+            
+            document.getElementById('stat-cuotas').textContent = `$${totalCuotasMes.toLocaleString('es-AR')}/mes`;
+            document.getElementById('stat-cuotas-remanentes').textContent = `${cuotasRemanentes} ($${montoRemanente.toLocaleString('es-AR')})`;
+            
+            // Gráfico de días
+            renderChartDias(gastosSemana);
+            renderChartCategorias(gastosMes);
+        }
+        
+        function renderChartDias(gastos) {
+            const dias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+            const totalesPorDia = [0, 0, 0, 0, 0, 0, 0];
+            
+            gastos.forEach(g => {
+                const fecha = new Date(g.fecha);
+                let dia = fecha.getDay() - 1;
+                if (dia < 0) dia = 6;
+                totalesPorDia[dia] += parseFloat(g.monto);
+            });
+            
+            const maxTotal = Math.max(...totalesPorDia, 1);
+            
+            let html = '';
+            dias.forEach((dia, i) => {
+                const altura = (totalesPorDia[i] / maxTotal) * 160;
+                html += `
+                    <div class="bar-group">
+                        <div class="bar-value">$${Math.round(totalesPorDia[i] / 1000)}k</div>
+                        <div class="bar" style="height: ${Math.max(altura, 4)}px;"></div>
+                        <div class="bar-label">${dia}</div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('chart-dias').innerHTML = html;
+        }
+        
+        function renderChartCategorias(gastos) {
+            const vario = gastos.filter(g => g.categoria === 'Vario').reduce((sum, g) => sum + parseFloat(g.monto), 0);
+            const eventual = gastos.filter(g => g.categoria === 'Eventual').reduce((sum, g) => sum + parseFloat(g.monto), 0);
+            const cuotasMes = cuotasData.reduce((sum, c) => sum + parseFloat(c.montoCuota), 0);
+            
+            const total = vario + eventual + cuotasMes || 1;
+            
+            const html = `
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; color: #00d9ff;">${Math.round(vario/total*100)}%</div>
+                    <div style="color: #aaa;">Vario</div>
+                    <div style="color: #00d9ff;">$${vario.toLocaleString('es-AR')}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; color: #ff4757;">${Math.round(eventual/total*100)}%</div>
+                    <div style="color: #aaa;">Eventual</div>
+                    <div style="color: #ff4757;">$${eventual.toLocaleString('es-AR')}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; color: #00ff88;">${Math.round(cuotasMes/total*100)}%</div>
+                    <div style="color: #aaa;">Cuotas</div>
+                    <div style="color: #00ff88;">$${cuotasMes.toLocaleString('es-AR')}</div>
+                </div>
+            `;
+            
+            document.getElementById('chart-categorias').innerHTML = html;
+        }
+    </script>
+</body>
+</html>
