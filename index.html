@@ -620,9 +620,9 @@
                 return;
             }
             
-            // Si es TC, también agregar la cuota
+            // Si es TC con cuotas
             if (tipo === 'TC') {
-                const totalCuotas = document.getElementById('cuota-total').value;
+                const totalCuotas = parseInt(document.getElementById('cuota-total').value);
                 const fechaCuota = document.getElementById('cuota-fecha').value;
                 
                 if (!totalCuotas) {
@@ -636,58 +636,105 @@
                 }
                 
                 // Calcular monto cuota = monto total / cantidad de cuotas
-                const montoCuota = parseFloat(monto) / parseInt(totalCuotas);
+                const montoCuota = parseFloat(monto) / totalCuotas;
                 
                 try {
-                    // Agregar cuota con 1 cuota ya pagada (la actual)
-                    const urlCuota = `${API_URL}?action=addCuota&concepto=${encodeURIComponent(concepto)}&montoCuota=${montoCuota.toFixed(2)}&totalCuotas=${totalCuotas}&fechaInicio=${fechaCuota}&cuotasPagadas=1&usuario=`;
+                    // Agregar cuota en tabla Cuotas (para seguimiento)
+                    const urlCuota = `${API_URL}?action=addCuota&concepto=${encodeURIComponent(concepto)}&montoCuota=${montoCuota.toFixed(2)}&totalCuotas=${totalCuotas}&fechaInicio=${fechaCuota}&cuotasPagadas=${totalCuotas}&usuario=`;
                     await fetch(urlCuota);
+                    
+                    // Agregar primera cuota como gasto (fecha actual)
+                    const urlGasto1 = `${API_URL}?action=addGasto&fecha=${fecha}&monto=${montoCuota.toFixed(2)}&tipo=${tipo}&categoria=${categoria}&extraordinario=${esEventual}&usuario=${encodeURIComponent(concepto + ' (1/' + totalCuotas + ')')}`;
+                    await fetch(urlGasto1);
+                    
+                    // Agregar cuotas restantes (día 1 de cada mes siguiente)
+                    const fechaInicio = new Date(fechaCuota);
+                    for (let i = 2; i <= totalCuotas; i++) {
+                        // Calcular fecha: día 1 del mes i-1 meses después
+                        const fechaCuotaFutura = new Date(fechaInicio.getFullYear(), fechaInicio.getMonth() + (i - 1), 1);
+                        const fechaStr = fechaCuotaFutura.toISOString().split('T')[0];
+                        
+                        const urlGastoFuturo = `${API_URL}?action=addGasto&fecha=${fechaStr}&monto=${montoCuota.toFixed(2)}&tipo=${tipo}&categoria=${categoria}&extraordinario=&usuario=${encodeURIComponent(concepto + ' (' + i + '/' + totalCuotas + ')')}`;
+                        await fetch(urlGastoFuturo);
+                    }
                     
                     // Limpiar campos de cuota
                     document.getElementById('cuota-total').value = '';
                     document.getElementById('cuota-monto-display').value = '';
-                } catch (error) {
-                    mostrarMensaje('Error al agregar cuota: ' + error, 'error');
-                    return;
-                }
-            }
-            
-            try {
-                // Guardamos el concepto en el campo usuario
-                const url = `${API_URL}?action=addGasto&fecha=${fecha}&monto=${monto}&tipo=${tipo}&categoria=${categoria}&extraordinario=${esEventual}&usuario=${encodeURIComponent(concepto)}`;
-                const res = await fetch(url);
-                const json = await res.json();
-                
-                if (json.success) {
-                    mostrarMensaje('Gasto agregado correctamente', 'success');
                     document.getElementById('gasto-monto').value = '';
                     document.getElementById('gasto-concepto').value = '';
+                    
+                    mostrarMensaje('Gasto en cuotas agregado correctamente', 'success');
                     cargarDatos();
-                } else {
-                    mostrarMensaje('Error: ' + json.error, 'error');
+                    
+                } catch (error) {
+                    mostrarMensaje('Error al agregar cuotas: ' + error, 'error');
                 }
-            } catch (error) {
-                mostrarMensaje('Error: ' + error, 'error');
+                
+            } else {
+                // Gasto normal (no TC)
+                try {
+                    const url = `${API_URL}?action=addGasto&fecha=${fecha}&monto=${monto}&tipo=${tipo}&categoria=${categoria}&extraordinario=${esEventual}&usuario=${encodeURIComponent(concepto)}`;
+                    const res = await fetch(url);
+                    const json = await res.json();
+                    
+                    if (json.success) {
+                        mostrarMensaje('Gasto agregado correctamente', 'success');
+                        document.getElementById('gasto-monto').value = '';
+                        document.getElementById('gasto-concepto').value = '';
+                        cargarDatos();
+                    } else {
+                        mostrarMensaje('Error: ' + json.error, 'error');
+                    }
+                } catch (error) {
+                    mostrarMensaje('Error: ' + error, 'error');
+                }
             }
         }
         
         async function eliminarGasto(row, tipo, concepto) {
-            if (!confirm('¿Eliminar este gasto?')) return;
+            // Extraer el concepto base (sin el número de cuota)
+            const conceptoBase = concepto.replace(/\s*\(\d+\/\d+\)\s*$/, '');
+            
+            let mensaje = '¿Eliminar este gasto?';
+            if (tipo === 'TC' && conceptoBase && conceptoBase !== '-') {
+                mensaje = '¿Eliminar este gasto y todas las cuotas asociadas a "' + conceptoBase + '"?';
+            }
+            
+            if (!confirm(mensaje)) return;
             
             try {
-                // Si es TC, también eliminar la cuota asociada por concepto
-                if (tipo === 'TC' && concepto && concepto !== '-') {
-                    const cuotaAsociada = cuotasData.find(c => c.concepto === concepto);
+                // Si es TC, eliminar todos los gastos con el mismo concepto base y la cuota asociada
+                if (tipo === 'TC' && conceptoBase && conceptoBase !== '-') {
+                    // Buscar y eliminar la cuota
+                    const cuotaAsociada = cuotasData.find(c => c.concepto === conceptoBase);
                     if (cuotaAsociada) {
                         await fetch(`${API_URL}?action=deleteCuota&row=${cuotaAsociada.row}`);
                     }
-                }
-                
-                const res = await fetch(`${API_URL}?action=deleteGasto&row=${row}`);
-                const json = await res.json();
-                if (json.success) {
-                    mostrarMensaje('Gasto eliminado', 'success');
+                    
+                    // Eliminar todos los gastos con el mismo concepto base
+                    const gastosRelacionados = gastosData.filter(g => {
+                        const conceptoGasto = (g.usuario || '').replace(/\s*\(\d+\/\d+\)\s*$/, '');
+                        return conceptoGasto === conceptoBase;
+                    });
+                    
+                    // Ordenar de mayor a menor row para no afectar los índices
+                    gastosRelacionados.sort((a, b) => b.row - a.row);
+                    
+                    for (const gasto of gastosRelacionados) {
+                        await fetch(`${API_URL}?action=deleteGasto&row=${gasto.row}`);
+                    }
+                    
+                    mostrarMensaje('Gasto y cuotas eliminados', 'success');
                     cargarDatos();
+                } else {
+                    // Gasto normal, solo eliminar ese
+                    const res = await fetch(`${API_URL}?action=deleteGasto&row=${row}`);
+                    const json = await res.json();
+                    if (json.success) {
+                        mostrarMensaje('Gasto eliminado', 'success');
+                        cargarDatos();
+                    }
                 }
             } catch (error) {
                 mostrarMensaje('Error: ' + error, 'error');
