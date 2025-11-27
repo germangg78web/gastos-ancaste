@@ -369,7 +369,7 @@
                 </div>
                 <div class="form-group">
                     <label>Monto ($)</label>
-                    <input type="number" id="gasto-monto" placeholder="0">
+                    <input type="number" id="gasto-monto" placeholder="0" onchange="calcularMontoCuota()" oninput="calcularMontoCuota()">
                 </div>
                 <div class="form-group">
                     <label>Tipo</label>
@@ -397,12 +397,12 @@
                         <input type="text" id="cuota-concepto" placeholder="Descripción de la compra">
                     </div>
                     <div class="form-group">
-                        <label>Monto Cuota ($)</label>
-                        <input type="number" id="cuota-monto" placeholder="0">
+                        <label>Total Cuotas</label>
+                        <input type="number" id="cuota-total" placeholder="12" onchange="calcularMontoCuota()" oninput="calcularMontoCuota()">
                     </div>
                     <div class="form-group">
-                        <label>Total Cuotas</label>
-                        <input type="number" id="cuota-total" placeholder="12">
+                        <label>Monto Cuota ($) <small style="color:#888;">(calculado)</small></label>
+                        <input type="text" id="cuota-monto-display" readonly style="background: rgba(255,255,255,0.05);">
                     </div>
                     <div class="form-group">
                         <label>Fecha Inicio</label>
@@ -554,9 +554,17 @@
             const section = document.getElementById('cuotas-section');
             if (tipo === 'TC') {
                 section.classList.add('visible');
+                calcularMontoCuota();
             } else {
                 section.classList.remove('visible');
             }
+        }
+        
+        function calcularMontoCuota() {
+            const monto = parseFloat(document.getElementById('gasto-monto').value) || 0;
+            const cuotas = parseInt(document.getElementById('cuota-total').value) || 1;
+            const montoCuota = monto / cuotas;
+            document.getElementById('cuota-monto-display').value = montoCuota > 0 ? `$${montoCuota.toLocaleString('es-AR', {maximumFractionDigits: 2})}` : '';
         }
         
         function showTab(tab) {
@@ -614,24 +622,26 @@
             // Si es TC, también agregar la cuota
             if (tipo === 'TC') {
                 const concepto = document.getElementById('cuota-concepto').value;
-                const montoCuota = document.getElementById('cuota-monto').value;
                 const totalCuotas = document.getElementById('cuota-total').value;
                 const fechaCuota = document.getElementById('cuota-fecha').value;
                 
-                if (!concepto || !montoCuota || !totalCuotas) {
+                if (!concepto || !totalCuotas) {
                     mostrarMensaje('Completá los datos de la cuota', 'error');
                     return;
                 }
                 
+                // Calcular monto cuota = monto total / cantidad de cuotas
+                const montoCuota = parseFloat(monto) / parseInt(totalCuotas);
+                
                 try {
-                    // Agregar cuota
-                    const urlCuota = `${API_URL}?action=addCuota&concepto=${encodeURIComponent(concepto)}&montoCuota=${montoCuota}&totalCuotas=${totalCuotas}&fechaInicio=${fechaCuota}&cuotasPagadas=0&usuario=`;
+                    // Agregar cuota con 1 cuota ya pagada (la actual)
+                    const urlCuota = `${API_URL}?action=addCuota&concepto=${encodeURIComponent(concepto)}&montoCuota=${montoCuota.toFixed(2)}&totalCuotas=${totalCuotas}&fechaInicio=${fechaCuota}&cuotasPagadas=1&usuario=`;
                     await fetch(urlCuota);
                     
                     // Limpiar campos de cuota
                     document.getElementById('cuota-concepto').value = '';
-                    document.getElementById('cuota-monto').value = '';
                     document.getElementById('cuota-total').value = '';
+                    document.getElementById('cuota-monto-display').value = '';
                 } catch (error) {
                     mostrarMensaje('Error al agregar cuota: ' + error, 'error');
                     return;
