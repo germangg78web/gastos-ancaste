@@ -539,22 +539,13 @@
             </div>
             
             <div class="chart-container">
-                <div class="chart-title">Gastos por Día de la Semana</div>
-                <div class="bar-chart" id="chart-dias"></div>
-                <div class="legend">
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #00d9ff;"></div>
-                        <span>Vario</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #ff4757;"></div>
-                        <span>Eventual</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #00ff88;"></div>
-                        <span>Cuota</span>
-                    </div>
-                </div>
+                <div class="chart-title">Gastos por Semana</div>
+                <div class="bar-chart" id="chart-semanas"></div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">Gastos por Mes</div>
+                <div class="bar-chart" id="chart-meses"></div>
             </div>
             
             <div class="chart-container">
@@ -1051,37 +1042,96 @@
             document.getElementById('stat-cuotas').textContent = `$${totalCuotasMes.toLocaleString('es-AR')}/mes`;
             document.getElementById('stat-cuotas-remanentes').textContent = `${cuotasRemanentes} ($${montoRemanente.toLocaleString('es-AR')})`;
             
-            // Gráfico de días
-            renderChartDias(gastosSemana);
+            // Gráficos
+            renderChartSemanas();
+            renderChartMeses();
             renderChartCategorias(gastosMes);
         }
         
-        function renderChartDias(gastos) {
-            const dias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-            const totalesPorDia = [0, 0, 0, 0, 0, 0, 0];
+        function renderChartSemanas() {
+            const hoy = new Date();
+            const semanas = [];
             
-            gastos.forEach(g => {
-                const fecha = new Date(g.fecha);
-                let dia = fecha.getDay() - 1;
-                if (dia < 0) dia = 6;
-                totalesPorDia[dia] += parseFloat(g.monto);
+            // Generar últimas 7 semanas (incluyendo la actual)
+            for (let i = 6; i >= 0; i--) {
+                const fecha = new Date(hoy);
+                fecha.setDate(fecha.getDate() - (i * 7));
+                const año = fecha.getFullYear();
+                const numSemana = getWeekNumber(fecha);
+                semanas.push({
+                    año: año,
+                    semana: numSemana,
+                    label: `S${numSemana}`
+                });
+            }
+            
+            // Calcular totales por semana
+            const totalesPorSemana = semanas.map(s => {
+                return gastosData.filter(g => {
+                    const fechaGasto = new Date(g.fecha);
+                    return fechaGasto.getFullYear() === s.año && getWeekNumber(fechaGasto) === s.semana;
+                }).reduce((sum, g) => sum + parseFloat(g.monto), 0);
             });
             
-            const maxTotal = Math.max(...totalesPorDia, 1);
+            const maxTotal = Math.max(...totalesPorSemana, 1);
             
             let html = '';
-            dias.forEach((dia, i) => {
-                const altura = (totalesPorDia[i] / maxTotal) * 160;
+            semanas.forEach((s, i) => {
+                const altura = (totalesPorSemana[i] / maxTotal) * 160;
+                const esActual = i === 6;
+                const color = esActual ? '#00d9ff' : '#0099cc';
                 html += `
                     <div class="bar-group">
-                        <div class="bar-value">$${Math.round(totalesPorDia[i] / 1000)}k</div>
-                        <div class="bar" style="height: ${Math.max(altura, 4)}px;"></div>
-                        <div class="bar-label">${dia}</div>
+                        <div class="bar-value">$${Math.round(totalesPorSemana[i] / 1000)}k</div>
+                        <div class="bar" style="height: ${Math.max(altura, 4)}px; background: ${color};"></div>
+                        <div class="bar-label">${s.label}</div>
                     </div>
                 `;
             });
             
-            document.getElementById('chart-dias').innerHTML = html;
+            document.getElementById('chart-semanas').innerHTML = html;
+        }
+        
+        function renderChartMeses() {
+            const hoy = new Date();
+            const meses = [];
+            const nombresMeses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+            
+            // Generar últimos 7 meses (incluyendo el actual)
+            for (let i = 6; i >= 0; i--) {
+                const fecha = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+                meses.push({
+                    año: fecha.getFullYear(),
+                    mes: fecha.getMonth(),
+                    label: nombresMeses[fecha.getMonth()]
+                });
+            }
+            
+            // Calcular totales por mes
+            const totalesPorMes = meses.map(m => {
+                return gastosData.filter(g => {
+                    const fechaGasto = new Date(g.fecha);
+                    return fechaGasto.getFullYear() === m.año && fechaGasto.getMonth() === m.mes;
+                }).reduce((sum, g) => sum + parseFloat(g.monto), 0);
+            });
+            
+            const maxTotal = Math.max(...totalesPorMes, 1);
+            
+            let html = '';
+            meses.forEach((m, i) => {
+                const altura = (totalesPorMes[i] / maxTotal) * 160;
+                const esActual = i === 6;
+                const color = esActual ? '#ff9f43' : '#cc7a30';
+                html += `
+                    <div class="bar-group">
+                        <div class="bar-value">$${Math.round(totalesPorMes[i] / 1000)}k</div>
+                        <div class="bar" style="height: ${Math.max(altura, 4)}px; background: ${color};"></div>
+                        <div class="bar-label">${m.label}</div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('chart-meses').innerHTML = html;
         }
         
         function renderChartCategorias(gastos) {
