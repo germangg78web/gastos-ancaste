@@ -505,35 +505,35 @@
             
             <div class="stats-grid" id="stats-container">
                 <div class="stat-card">
-                    <div class="stat-value" id="stat-semana">$0</div>
+                    <div class="stat-value" id="stat-semana" style="color: #00d9ff;">$0</div>
                     <div class="stat-label">Total Semana</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value" id="stat-mes">$0</div>
+                    <div class="stat-value" id="stat-mes" style="color: #ff9f43;">$0</div>
                     <div class="stat-label">Total Mes</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value" id="stat-diario-semana">$0</div>
+                    <div class="stat-value" id="stat-diario-semana" style="color: #00d9ff;">$0</div>
                     <div class="stat-label">Promedio Diario (Semana)</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value" id="stat-diario-mes">$0</div>
+                    <div class="stat-value" id="stat-diario-mes" style="color: #ff9f43;">$0</div>
                     <div class="stat-label">Promedio Diario (Mes)</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value" id="stat-vario">$0</div>
+                    <div class="stat-value" id="stat-vario" style="color: #ff9f43;">$0</div>
                     <div class="stat-label">Gastos Varios</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value" id="stat-eventual">$0</div>
+                    <div class="stat-value" id="stat-eventual" style="color: #ff9f43;">$0</div>
                     <div class="stat-label">Gastos Eventuales</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value" id="stat-cuotas">$0</div>
+                    <div class="stat-value" id="stat-cuotas" style="color: #ff9f43;">$0</div>
                     <div class="stat-label">Gastos en Cuotas</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value" id="stat-cuotas-remanentes">0</div>
+                    <div class="stat-value" id="stat-cuotas-remanentes" style="color: #ff9f43;">0</div>
                     <div class="stat-label">Cuotas Remanentes</div>
                 </div>
             </div>
@@ -578,7 +578,9 @@
             
             const año = hoy.getFullYear();
             const semana = getWeekNumber(hoy);
-            // Solo setear valores en Reportes, no en Listado
+            // Filtro Listado: solo mes actual (semana vacío)
+            document.getElementById('filtro-mes').value = `${año}-${(hoy.getMonth() + 1).toString().padStart(2, '0')}`;
+            // Reportes: semana y mes actual
             document.getElementById('reporte-semana').value = `${año}-W${semana.toString().padStart(2, '0')}`;
             document.getElementById('reporte-mes').value = `${año}-${(hoy.getMonth() + 1).toString().padStart(2, '0')}`;
             
