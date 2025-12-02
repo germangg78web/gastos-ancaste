@@ -564,8 +564,14 @@
         // Inicialización
         document.addEventListener('DOMContentLoaded', () => {
             const hoy = new Date();
-            document.getElementById('gasto-fecha').valueAsDate = hoy;
-            document.getElementById('cuota-fecha').valueAsDate = hoy;
+            
+            // Formatear fecha local correctamente (YYYY-MM-DD)
+            const fechaLocal = hoy.getFullYear() + '-' + 
+                String(hoy.getMonth() + 1).padStart(2, '0') + '-' + 
+                String(hoy.getDate()).padStart(2, '0');
+            
+            document.getElementById('gasto-fecha').value = fechaLocal;
+            document.getElementById('cuota-fecha').value = fechaLocal;
             
             const año = hoy.getFullYear();
             const semana = getWeekNumber(hoy);
