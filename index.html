@@ -504,6 +504,11 @@
             </div>
             
             <div class="chart-container">
+                <div class="chart-title">Gastos por Día (Semana Actual)</div>
+                <div class="bar-chart" id="chart-dias"></div>
+            </div>
+            
+            <div class="chart-container">
                 <div class="chart-title">Gastos por Semana</div>
                 <div class="bar-chart" id="chart-semanas"></div>
             </div>
@@ -1049,9 +1054,50 @@
             document.getElementById('stat-cuotas-remanentes').textContent = `${cuotasRemanentes} ($${montoRemanente.toLocaleString('es-AR')})`;
             
             // Gráficos
+            renderChartDias();
             renderChartSemanas();
             renderChartMeses();
             renderChartCategorias(gastosMes);
+        }
+        
+        function renderChartDias() {
+            const hoy = new Date();
+            const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+            const añoActual = hoy.getFullYear();
+            const semanaActual = getWeekNumber(hoy);
+            
+            // Filtrar gastos de la semana actual
+            const gastosSemanaActual = gastosData.filter(g => {
+                const fechaGasto = new Date(g.fecha);
+                return fechaGasto.getFullYear() === añoActual && getWeekNumber(fechaGasto) === semanaActual;
+            });
+            
+            // Calcular totales por día (0=Dom, 1=Lun, ..., 6=Sáb)
+            const totalesPorDia = [0, 0, 0, 0, 0, 0, 0];
+            gastosSemanaActual.forEach(g => {
+                const fechaGasto = new Date(g.fecha);
+                const diaSemana = fechaGasto.getDay(); // 0=Dom, 1=Lun, etc.
+                totalesPorDia[diaSemana] += parseFloat(g.monto);
+            });
+            
+            const maxTotal = Math.max(...totalesPorDia, 1);
+            const diaHoy = hoy.getDay();
+            
+            let html = '';
+            dias.forEach((dia, i) => {
+                const altura = (totalesPorDia[i] / maxTotal) * 160;
+                const esHoy = i === diaHoy;
+                const color = esHoy ? '#00d9ff' : '#0099cc';
+                html += `
+                    <div class="bar-group">
+                        <div class="bar-value">$${Math.round(totalesPorDia[i] / 1000)}k</div>
+                        <div class="bar" style="height: ${Math.max(altura, 4)}px; background: ${color};"></div>
+                        <div class="bar-label">${dia}</div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('chart-dias').innerHTML = html;
         }
         
         function renderChartSemanas() {
