@@ -492,23 +492,22 @@
         <div id="panel-reportes" class="panel">
             <h2 style="margin-bottom: 20px; color: #00d9ff;">Reportes</h2>
             
-            <div class="form-grid" style="margin-bottom: 20px; grid-template-columns: 1fr 1fr 1fr auto;">
+            <div class="form-grid" style="margin-bottom: 10px;">
                 <div class="form-group">
                     <label>Seleccionar semana</label>
-                    <input type="week" id="reporte-semana" onchange="actualizarReportes()" style="max-width: 140px;">
+                    <input type="week" id="reporte-semana" onchange="actualizarReportes()">
                 </div>
                 <div class="form-group">
                     <label>Seleccionar mes</label>
-                    <input type="month" id="reporte-mes" onchange="actualizarReportes()" style="max-width: 140px;">
+                    <input type="month" id="reporte-mes" onchange="actualizarReportes()">
                 </div>
-                <div class="form-group">
+            </div>
+            <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap;">
+                <div class="form-group" style="flex: 0 0 auto;">
                     <label>Target Diario ($)</label>
-                    <input type="number" id="target-diario" placeholder="30000" style="max-width: 100px;">
+                    <input type="number" id="target-diario" placeholder="30000" style="width: 110px;">
                 </div>
-                <div class="form-group">
-                    <label>&nbsp;</label>
-                    <button class="btn btn-primary btn-small" onclick="guardarTargetDiario()">Guardar</button>
-                </div>
+                <button class="btn btn-primary" onclick="guardarTargetDiario()" style="height: 45px;">Guardar</button>
             </div>
             
             <div class="chart-container">
