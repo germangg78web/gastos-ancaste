@@ -492,18 +492,22 @@
         <div id="panel-reportes" class="panel">
             <h2 style="margin-bottom: 20px; color: #00d9ff;">Reportes</h2>
             
-            <div class="form-grid" style="margin-bottom: 20px;">
+            <div class="form-grid" style="margin-bottom: 20px; grid-template-columns: 1fr 1fr 1fr auto;">
                 <div class="form-group">
                     <label>Seleccionar semana</label>
-                    <input type="week" id="reporte-semana" onchange="actualizarReportes()">
+                    <input type="week" id="reporte-semana" onchange="actualizarReportes()" style="max-width: 140px;">
                 </div>
                 <div class="form-group">
                     <label>Seleccionar mes</label>
-                    <input type="month" id="reporte-mes" onchange="actualizarReportes()">
+                    <input type="month" id="reporte-mes" onchange="actualizarReportes()" style="max-width: 140px;">
                 </div>
                 <div class="form-group">
                     <label>Target Diario ($)</label>
-                    <input type="number" id="target-diario" placeholder="30000" value="30000" onchange="actualizarReportes()" oninput="actualizarReportes()">
+                    <input type="number" id="target-diario" placeholder="30000" style="max-width: 100px;">
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary btn-small" onclick="guardarTargetDiario()">Guardar</button>
                 </div>
             </div>
             
@@ -648,22 +652,56 @@
         
         async function cargarDatos() {
             try {
-                const [gastosRes, cuotasRes] = await Promise.all([
+                const [gastosRes, cuotasRes, targetRes] = await Promise.all([
                     fetch(`${API_URL}?action=getGastos`),
-                    fetch(`${API_URL}?action=getCuotas`)
+                    fetch(`${API_URL}?action=getCuotas`),
+                    fetch(`${API_URL}?action=getTargetDiario`)
                 ]);
                 
                 const gastosJson = await gastosRes.json();
                 const cuotasJson = await cuotasRes.json();
+                const targetJson = await targetRes.json();
                 
                 if (gastosJson.success) gastosData = gastosJson.data;
                 if (cuotasJson.success) cuotasData = cuotasJson.data;
+                if (targetJson.success && targetJson.target) {
+                    document.getElementById('target-diario').value = targetJson.target;
+                }
                 
                 renderGastos();
                 renderCuotas();
                 actualizarReportes();
             } catch (error) {
                 mostrarMensaje('Error al cargar datos: ' + error, 'error');
+            }
+        }
+        
+        async function guardarTargetDiario() {
+            const target = document.getElementById('target-diario').value;
+            
+            if (!target) {
+                mostrarMensaje('Ingresá un valor de target', 'error');
+                return;
+            }
+            
+            mostrarOverlay('Guardando target...');
+            
+            try {
+                const url = `${API_URL}?action=setTargetDiario&target=${target}`;
+                const res = await fetch(url);
+                const json = await res.json();
+                
+                ocultarOverlay();
+                
+                if (json.success) {
+                    mostrarMensaje('Target guardado correctamente', 'success');
+                    actualizarReportes();
+                } else {
+                    mostrarMensaje('Error: ' + json.error, 'error');
+                }
+            } catch (error) {
+                ocultarOverlay();
+                mostrarMensaje('Error: ' + error, 'error');
             }
         }
         
@@ -1065,6 +1103,7 @@
         }
         
         function getColorByTarget(valor, target) {
+            if (target <= 0) return '#00cc6a'; // Sin target, verde por defecto
             if (valor <= target) {
                 return '#00ff88'; // Verde - dentro del target
             } else if (valor < target * 1.20) {
@@ -1096,17 +1135,14 @@
             });
             
             const maxTotal = Math.max(...totalesPorDia, 1);
-            const diaHoy = hoy.getDay();
             
             let html = '';
             dias.forEach((dia, i) => {
                 const altura = (totalesPorDia[i] / maxTotal) * 160;
-                const esHoy = i === diaHoy;
-                const colorBarra = esHoy ? '#00ff88' : '#00cc6a';
-                const colorTexto = targetDiario > 0 ? getColorByTarget(totalesPorDia[i], targetDiario) : '#fff';
+                const colorBarra = getColorByTarget(totalesPorDia[i], targetDiario);
                 html += `
                     <div class="bar-group">
-                        <div class="bar-value" style="color: ${colorTexto}; font-weight: bold;">$${Math.round(totalesPorDia[i] / 1000)}k</div>
+                        <div class="bar-value" style="color: #fff; font-weight: bold;">$${Math.round(totalesPorDia[i] / 1000)}k</div>
                         <div class="bar" style="height: ${Math.max(altura, 4)}px; background: ${colorBarra};"></div>
                         <div class="bar-label">${dia}</div>
                     </div>
@@ -1148,12 +1184,10 @@
             let html = '';
             semanas.forEach((s, i) => {
                 const altura = (totalesPorSemana[i] / maxTotal) * 160;
-                const esActual = i === 6;
-                const colorBarra = esActual ? '#00d9ff' : '#0099cc';
-                const colorTexto = targetDiario > 0 ? getColorByTarget(totalesPorSemana[i], targetSemanal) : '#fff';
+                const colorBarra = getColorByTarget(totalesPorSemana[i], targetSemanal);
                 html += `
                     <div class="bar-group">
-                        <div class="bar-value" style="color: ${colorTexto}; font-weight: bold;">$${Math.round(totalesPorSemana[i] / 1000)}k</div>
+                        <div class="bar-value" style="color: #fff; font-weight: bold;">$${Math.round(totalesPorSemana[i] / 1000)}k</div>
                         <div class="bar" style="height: ${Math.max(altura, 4)}px; background: ${colorBarra};"></div>
                         <div class="bar-label">${s.label}</div>
                     </div>
@@ -1194,13 +1228,11 @@
             let html = '';
             meses.forEach((m, i) => {
                 const altura = (totalesPorMes[i] / maxTotal) * 160;
-                const esActual = i === 6;
-                const colorBarra = esActual ? '#ff9f43' : '#cc7a30';
                 const targetMensual = targetDiario * m.diasEnMes;
-                const colorTexto = targetDiario > 0 ? getColorByTarget(totalesPorMes[i], targetMensual) : '#fff';
+                const colorBarra = getColorByTarget(totalesPorMes[i], targetMensual);
                 html += `
                     <div class="bar-group">
-                        <div class="bar-value" style="color: ${colorTexto}; font-weight: bold;">$${Math.round(totalesPorMes[i] / 1000)}k</div>
+                        <div class="bar-value" style="color: #fff; font-weight: bold;">$${Math.round(totalesPorMes[i] / 1000)}k</div>
                         <div class="bar" style="height: ${Math.max(altura, 4)}px; background: ${colorBarra};"></div>
                         <div class="bar-label">${m.label}</div>
                     </div>
