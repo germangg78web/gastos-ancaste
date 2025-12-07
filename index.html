@@ -603,7 +603,7 @@
     </div>
     
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzUUSI9VZTr2kQ08c-XdbiH_6I8eGMcaJ30WJWkJ2FvG-jOU2EouzuIri6B_TDlv_45/exec';
+        const API_URL = 'https://script.google.com/macros/s/AKfycbwSDVynnvYuo1MWLMxFa_6e4VZERE_kOoHgZNAwj0Smo5b6zKzZ1sU8ZM8U-C-dw3fb/exec';
         
         let gastosData = [];
         let cuotasData = [];
@@ -862,22 +862,25 @@
                     </thead>
                     <tbody>`;
                 
-                // Ordenar por fecha descendente
-                usos.sort((a, b) => {
-                    const fechaA = new Date(a.fecha + 'T' + (a.hora || '00:00:00'));
-                    const fechaB = new Date(b.fecha + 'T' + (b.hora || '00:00:00'));
-                    return fechaB - fechaA;
-                });
+                // Ordenar por orden descendente
+                usos.sort((a, b) => (b.orden || 0) - (a.orden || 0));
                 
                 usos.forEach(s => {
-                    const fecha = new Date(s.fecha).toLocaleDateString('es-AR');
-                    const hora = s.hora || '';
+                    let fechaStr = '-';
+                    if (s.fecha) {
+                        try {
+                            const fechaObj = new Date(s.fecha);
+                            fechaStr = fechaObj.toLocaleDateString('es-AR');
+                        } catch(e) {
+                            fechaStr = s.fecha;
+                        }
+                    }
                     html += `
                         <tr>
-                            <td>${fecha}${hora ? ' ' + hora.substring(0,5) : ''}</td>
+                            <td>${fechaStr}</td>
                             <td>${s.motivo || '-'}</td>
                             <td style="color: #ff9f43; font-weight: bold;">$${parseFloat(s.monto).toLocaleString('es-AR')}</td>
-                            <td><button class="btn btn-danger btn-small" onclick="eliminarUsoSaving(${s.row}, '${s.fecha}', '${s.hora || ''}')">X</button></td>
+                            <td><button class="btn btn-danger btn-small" onclick="eliminarUsoSaving(${s.row}, ${s.orden || 0})">X</button></td>
                         </tr>
                     `;
                 });
@@ -887,27 +890,17 @@
             }
         }
         
-        async function eliminarUsoSaving(row, fecha, hora) {
+        async function eliminarUsoSaving(row, orden) {
             if (!confirm('¿Eliminar este uso de savings?')) return;
             
             mostrarOverlay('Eliminando uso de savings...');
             
             try {
                 // Buscar y eliminar el gasto de exceso si existe
-                if (fecha && hora) {
-                    // Generar el timestamp que usamos en el concepto del gasto
-                    const partesFecha = fecha.split('-');
-                    const horaLimpia = hora.replace(/:/g, ''); // Convertir HH:MM:SS a HHMMSS
-                    const año2d = partesFecha[0].slice(-2);
-                    const mes2d = partesFecha[1];
-                    const dia2d = partesFecha[2];
-                    const timestamp = `${año2d}${mes2d}${dia2d}-${horaLimpia}`;
-                    const conceptoBuscar = `Exceso de Saving - ${timestamp}`;
+                if (orden) {
+                    const ordenStr = String(orden).padStart(7, '0');
+                    const conceptoBuscar = `Exceso de Saving - ${ordenStr}`;
                     
-                    console.log('Fecha:', fecha);
-                    console.log('Hora:', hora);
-                    console.log('Hora limpia:', horaLimpia);
-                    console.log('Timestamp:', timestamp);
                     console.log('Buscando gasto con concepto:', conceptoBuscar);
                     
                     // Buscar y eliminar el gasto de exceso si existe
@@ -915,28 +908,13 @@
                     const gastosJson = await gastosRes.json();
                     const gastosActuales = gastosJson.data || [];
                     
-                    console.log('Gastos encontrados:', gastosActuales.length);
-                    
-                    // Buscar por coincidencia exacta o parcial
-                    let gastoExceso = gastosActuales.find(g => g.usuario === conceptoBuscar);
-                    
-                    // Si no encuentra exacto, buscar por fecha al menos
-                    if (!gastoExceso) {
-                        const conceptoParcial = `Exceso de Saving - ${año2d}${mes2d}${dia2d}`;
-                        gastoExceso = gastosActuales.find(g => g.usuario && g.usuario.startsWith(conceptoParcial));
-                        console.log('Buscando parcial:', conceptoParcial);
-                    }
+                    const gastoExceso = gastosActuales.find(g => g.usuario === conceptoBuscar);
                     
                     if (gastoExceso) {
-                        console.log('Encontrado gasto exceso:', gastoExceso.usuario, 'row:', gastoExceso.row);
+                        console.log('Encontrado gasto exceso, eliminando row:', gastoExceso.row);
                         await fetch(`${API_URL}?action=deleteGasto&row=${gastoExceso.row}`);
                     } else {
-                        console.log('No se encontró gasto de exceso. Conceptos existentes:');
-                        gastosActuales.forEach(g => {
-                            if (g.usuario && g.usuario.includes('Exceso')) {
-                                console.log('  -', g.usuario);
-                            }
-                        });
+                        console.log('No se encontró gasto de exceso (puede que no haya habido exceso)');
                     }
                 }
                 
@@ -986,27 +964,23 @@
             mostrarOverlay('Procesando uso de savings...');
             
             try {
-                // Generar timestamp: YYMMDD-HHMMSS
-                const año2d = String(hoy.getFullYear()).slice(-2);
-                const mes2d = String(hoy.getMonth() + 1).padStart(2, '0');
-                const dia2d = String(hoy.getDate()).padStart(2, '0');
-                const hora2d = String(hoy.getHours()).padStart(2, '0');
-                const min2d = String(hoy.getMinutes()).padStart(2, '0');
-                const seg2d = String(hoy.getSeconds()).padStart(2, '0');
-                const timestamp = `${año2d}${mes2d}${dia2d}-${hora2d}${min2d}${seg2d}`;
-                
                 const fechaStr = hoy.getFullYear() + '-' + 
                     String(hoy.getMonth() + 1).padStart(2, '0') + '-' + 
                     String(hoy.getDate()).padStart(2, '0');
-                const horaStr = `${hora2d}:${min2d}:${seg2d}`;
                 
-                // Registrar el uso en Savings (con fecha y hora)
-                await fetch(`${API_URL}?action=addSaving&tipo=Uso&año=${hoy.getFullYear()}&semana=${getWeekNumber(hoy)}&targetSemanal=0&gastoSemana=0&monto=${monto}&fecha=${fechaStr}&hora=${horaStr}&motivo=${encodeURIComponent(motivo)}`);
+                // Obtener siguiente número de orden
+                const ordenRes = await fetch(`${API_URL}?action=getNextOrden`);
+                const ordenJson = await ordenRes.json();
+                const orden = ordenJson.orden || 1;
+                const ordenStr = String(orden).padStart(7, '0');
+                
+                // Registrar el uso en Savings (con orden)
+                await fetch(`${API_URL}?action=addSaving&tipo=Uso&año=${hoy.getFullYear()}&semana=${getWeekNumber(hoy)}&targetSemanal=0&gastoSemana=0&monto=${monto}&fecha=${fechaStr}&hora=&motivo=${encodeURIComponent(motivo)}&orden=${orden}`);
                 
                 // Si el monto excede el ahorro disponible, crear gasto por el exceso
                 if (monto > ahorroDisponible) {
                     const exceso = monto - ahorroDisponible;
-                    const conceptoExceso = `Exceso de Saving - ${timestamp}`;
+                    const conceptoExceso = `Exceso de Saving - ${ordenStr}`;
                     await fetch(`${API_URL}?action=addGasto&fecha=${fechaStr}&monto=${exceso}&tipo=BV&categoria=Vario&extraordinario=&usuario=${encodeURIComponent(conceptoExceso)}`);
                     mostrarMensaje(`Savings usado. Exceso de $${exceso.toLocaleString('es-AR')} agregado como gasto.`, 'success');
                 } else {
