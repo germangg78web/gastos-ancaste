@@ -735,8 +735,9 @@
                 const semana = getWeekNumber(fecha);
                 const key = `${año}-${semana}`;
                 
-                // No procesar semana actual
-                if (año === añoActual && semana === semanaActual) return;
+                // No procesar semana actual ni futuras
+                if (año > añoActual) return;
+                if (año === añoActual && semana >= semanaActual) return;
                 
                 if (!semanasConGastos[key]) {
                     semanasConGastos[key] = { año, semana, total: 0 };
@@ -778,12 +779,23 @@
         }
         
         function renderSavings() {
+            const hoy = new Date();
+            const semanaActual = getWeekNumber(hoy);
+            const añoActual = hoy.getFullYear();
+            
+            // Filtrar solo ahorros de semanas pasadas (no actuales ni futuras)
+            const ahorros = savingsData.filter(s => {
+                if (s.tipo !== 'Ahorro') return false;
+                if (s.año > añoActual) return false;
+                if (s.año === añoActual && s.semana >= semanaActual) return false;
+                return true;
+            });
+            
+            const usos = savingsData.filter(s => s.tipo === 'Uso');
+            
             // Calcular ahorro acumulado
             let totalAhorros = 0;
             let totalUsos = 0;
-            
-            const ahorros = savingsData.filter(s => s.tipo === 'Ahorro');
-            const usos = savingsData.filter(s => s.tipo === 'Uso');
             
             ahorros.forEach(s => totalAhorros += parseFloat(s.monto) || 0);
             usos.forEach(s => totalUsos += parseFloat(s.monto) || 0);
