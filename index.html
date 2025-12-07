@@ -959,7 +959,9 @@
                 return true;
             }).forEach(s => totalAhorros += parseFloat(s.monto) || 0);
             savingsData.filter(s => s.tipo === 'Uso').forEach(s => totalUsos += parseFloat(s.monto) || 0);
-            const ahorroDisponible = totalAhorros - totalUsos;
+            
+            // El ahorro disponible no puede ser negativo
+            const ahorroDisponible = Math.max(0, totalAhorros - totalUsos);
             
             mostrarOverlay('Procesando uso de savings...');
             
