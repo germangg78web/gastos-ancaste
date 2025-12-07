@@ -399,6 +399,7 @@
             <button class="tab" onclick="showTab('cuotas')">Cuotas</button>
             <button class="tab" onclick="showTab('listado')">Listado</button>
             <button class="tab" onclick="showTab('reportes')">Reportes</button>
+            <button class="tab" onclick="showTab('savings')">Savings</button>
         </div>
         
         <div id="mensaje" class="mensaje"></div>
@@ -566,13 +567,47 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Panel Savings -->
+        <div id="panel-savings" class="panel">
+            <h2 style="margin-bottom: 20px; color: #00d9ff;">Savings</h2>
+            
+            <!-- Ahorro Acumulado -->
+            <div class="stat-card" style="margin-bottom: 20px; text-align: center;">
+                <div class="stat-label">Ahorro Acumulado</div>
+                <div class="stat-value" id="ahorro-acumulado" style="font-size: 2.5rem; color: #00ff88;">$0</div>
+            </div>
+            
+            <!-- Usar Savings -->
+            <h3 style="color: #00d9ff; margin-bottom: 15px;">Usar Savings</h3>
+            <div class="form-grid" style="margin-bottom: 10px;">
+                <div class="form-group">
+                    <label>Monto ($)</label>
+                    <input type="number" id="savings-monto" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Motivo</label>
+                    <input type="text" id="savings-motivo" placeholder="Ej: Cena especial">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="usarSavings()" style="margin-bottom: 25px;">Usar Savings</button>
+            
+            <!-- Historial de Ahorros Semanales -->
+            <h3 style="color: #00d9ff; margin-bottom: 15px;">Historial de Ahorros Semanales</h3>
+            <div id="historial-ahorros" class="loading" style="margin-bottom: 25px;">Cargando...</div>
+            
+            <!-- Historial de Usos -->
+            <h3 style="color: #00d9ff; margin-bottom: 15px;">Historial de Usos</h3>
+            <div id="historial-usos" class="loading">Cargando...</div>
+        </div>
     </div>
     
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbyR5FHKHUCUc6B5JTdVlmTDlyeGLvVJN-21E0BquDP_DWhkS_0IqLda2389IVqq3r6f/exec';
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzJfj60YuM8SfBMYo4aUgZYCWcO33HZiK5iHAfJHsWrGDooutDTwTiWjFaQu6pupEEi/exec';
         
         let gastosData = [];
         let cuotasData = [];
+        let savingsData = [];
         
         // Inicialización
         document.addEventListener('DOMContentLoaded', () => {
@@ -652,28 +687,239 @@
         
         async function cargarDatos() {
             try {
-                const [gastosRes, cuotasRes, targetRes] = await Promise.all([
+                const [gastosRes, cuotasRes, targetRes, savingsRes] = await Promise.all([
                     fetch(`${API_URL}?action=getGastos`),
                     fetch(`${API_URL}?action=getCuotas`),
-                    fetch(`${API_URL}?action=getTargetDiario`)
+                    fetch(`${API_URL}?action=getTargetDiario`),
+                    fetch(`${API_URL}?action=getSavings`)
                 ]);
                 
                 const gastosJson = await gastosRes.json();
                 const cuotasJson = await cuotasRes.json();
                 const targetJson = await targetRes.json();
+                const savingsJson = await savingsRes.json();
                 
                 if (gastosJson.success) gastosData = gastosJson.data;
                 if (cuotasJson.success) cuotasData = cuotasJson.data;
                 if (targetJson.success && targetJson.target) {
                     document.getElementById('target-diario').value = targetJson.target;
                 }
+                if (savingsJson.success) savingsData = savingsJson.data;
                 
                 renderGastos();
                 renderCuotas();
                 actualizarReportes();
+                
+                // Procesar semanas cerradas automáticamente
+                await procesarSemanasCerradas();
+                renderSavings();
+                
             } catch (error) {
                 mostrarMensaje('Error al cargar datos: ' + error, 'error');
             }
+        }
+        
+        async function procesarSemanasCerradas() {
+            const targetDiario = parseFloat(document.getElementById('target-diario').value) || 0;
+            if (targetDiario <= 0) return;
+            
+            const hoy = new Date();
+            const semanaActual = getWeekNumber(hoy);
+            const añoActual = hoy.getFullYear();
+            
+            // Buscar semanas con gastos que no están en savings
+            const semanasConGastos = {};
+            gastosData.forEach(g => {
+                const fecha = new Date(g.fecha);
+                const año = fecha.getFullYear();
+                const semana = getWeekNumber(fecha);
+                const key = `${año}-${semana}`;
+                
+                // No procesar semana actual
+                if (año === añoActual && semana === semanaActual) return;
+                
+                if (!semanasConGastos[key]) {
+                    semanasConGastos[key] = { año, semana, total: 0 };
+                }
+                semanasConGastos[key].total += parseFloat(g.monto);
+            });
+            
+            // Verificar cuáles ya están registradas en savings
+            const semanasRegistradas = new Set();
+            savingsData.forEach(s => {
+                if (s.tipo === 'Ahorro') {
+                    semanasRegistradas.add(`${s.año}-${s.semana}`);
+                }
+            });
+            
+            // Registrar semanas faltantes
+            for (const key in semanasConGastos) {
+                if (!semanasRegistradas.has(key)) {
+                    const { año, semana, total } = semanasConGastos[key];
+                    const targetSemanal = targetDiario * 7;
+                    const ahorro = targetSemanal - total;
+                    
+                    try {
+                        await fetch(`${API_URL}?action=addSaving&tipo=Ahorro&año=${año}&semana=${semana}&targetSemanal=${targetSemanal}&gastoSemana=${total}&monto=${ahorro}`);
+                    } catch (error) {
+                        console.error('Error registrando ahorro:', error);
+                    }
+                }
+            }
+            
+            // Recargar savings después de procesar
+            try {
+                const savingsRes = await fetch(`${API_URL}?action=getSavings`);
+                const savingsJson = await savingsRes.json();
+                if (savingsJson.success) savingsData = savingsJson.data;
+            } catch (error) {
+                console.error('Error recargando savings:', error);
+            }
+        }
+        
+        function renderSavings() {
+            // Calcular ahorro acumulado
+            let totalAhorros = 0;
+            let totalUsos = 0;
+            
+            const ahorros = savingsData.filter(s => s.tipo === 'Ahorro');
+            const usos = savingsData.filter(s => s.tipo === 'Uso');
+            
+            ahorros.forEach(s => totalAhorros += parseFloat(s.monto) || 0);
+            usos.forEach(s => totalUsos += parseFloat(s.monto) || 0);
+            
+            const ahorroAcumulado = totalAhorros - totalUsos;
+            
+            const colorAhorro = ahorroAcumulado >= 0 ? '#00ff88' : '#ff4757';
+            document.getElementById('ahorro-acumulado').innerHTML = `$${ahorroAcumulado.toLocaleString('es-AR')}`;
+            document.getElementById('ahorro-acumulado').style.color = colorAhorro;
+            
+            // Renderizar historial de ahorros
+            const containerAhorros = document.getElementById('historial-ahorros');
+            if (ahorros.length === 0) {
+                containerAhorros.innerHTML = '<p style="color: #aaa;">No hay ahorros registrados</p>';
+            } else {
+                let html = `<table>
+                    <thead>
+                        <tr>
+                            <th>Semana</th>
+                            <th>Target</th>
+                            <th>Gasto</th>
+                            <th>Ahorro</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+                
+                // Ordenar por año y semana descendente
+                ahorros.sort((a, b) => {
+                    if (b.año !== a.año) return b.año - a.año;
+                    return b.semana - a.semana;
+                });
+                
+                ahorros.forEach(s => {
+                    const monto = parseFloat(s.monto);
+                    const colorMonto = monto >= 0 ? '#00ff88' : '#ff4757';
+                    html += `
+                        <tr>
+                            <td>S${s.semana} - ${s.año}</td>
+                            <td>$${parseFloat(s.targetSemanal).toLocaleString('es-AR')}</td>
+                            <td>$${parseFloat(s.gastoSemana).toLocaleString('es-AR')}</td>
+                            <td style="color: ${colorMonto}; font-weight: bold;">$${monto.toLocaleString('es-AR')}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table>';
+                containerAhorros.innerHTML = html;
+            }
+            
+            // Renderizar historial de usos
+            const containerUsos = document.getElementById('historial-usos');
+            if (usos.length === 0) {
+                containerUsos.innerHTML = '<p style="color: #aaa;">No hay usos registrados</p>';
+            } else {
+                let html = `<table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Motivo</th>
+                            <th>Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+                
+                // Ordenar por fecha descendente
+                usos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+                
+                usos.forEach(s => {
+                    const fecha = new Date(s.fecha).toLocaleDateString('es-AR');
+                    html += `
+                        <tr>
+                            <td>${fecha}</td>
+                            <td>${s.motivo || '-'}</td>
+                            <td style="color: #ff9f43; font-weight: bold;">$${parseFloat(s.monto).toLocaleString('es-AR')}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table>';
+                containerUsos.innerHTML = html;
+            }
+        }
+        
+        async function usarSavings() {
+            const monto = parseFloat(document.getElementById('savings-monto').value);
+            const motivo = document.getElementById('savings-motivo').value;
+            
+            if (!monto || monto <= 0) {
+                mostrarMensaje('Ingresá un monto válido', 'error');
+                return;
+            }
+            
+            if (!motivo) {
+                mostrarMensaje('Ingresá un motivo', 'error');
+                return;
+            }
+            
+            // Calcular ahorro disponible
+            let totalAhorros = 0;
+            let totalUsos = 0;
+            savingsData.filter(s => s.tipo === 'Ahorro').forEach(s => totalAhorros += parseFloat(s.monto) || 0);
+            savingsData.filter(s => s.tipo === 'Uso').forEach(s => totalUsos += parseFloat(s.monto) || 0);
+            const ahorroDisponible = totalAhorros - totalUsos;
+            
+            mostrarOverlay('Procesando uso de savings...');
+            
+            try {
+                const hoy = new Date();
+                const fechaStr = hoy.getFullYear() + '-' + 
+                    String(hoy.getMonth() + 1).padStart(2, '0') + '-' + 
+                    String(hoy.getDate()).padStart(2, '0');
+                
+                // Registrar el uso en Savings
+                await fetch(`${API_URL}?action=addSaving&tipo=Uso&año=${hoy.getFullYear()}&semana=${getWeekNumber(hoy)}&targetSemanal=0&gastoSemana=0&monto=${monto}&fecha=${fechaStr}&motivo=${encodeURIComponent(motivo)}`);
+                
+                // Si el monto excede el ahorro disponible, crear gasto por el exceso
+                if (monto > ahorroDisponible) {
+                    const exceso = monto - ahorroDisponible;
+                    await fetch(`${API_URL}?action=addGasto&fecha=${fechaStr}&monto=${exceso}&tipo=BV&categoria=Vario&extraordinario=&usuario=${encodeURIComponent('Exceso de Saving')}`);
+                    mostrarMensaje(`Savings usado. Exceso de $${exceso.toLocaleString('es-AR')} agregado como gasto.`, 'success');
+                } else {
+                    mostrarMensaje('Savings usado correctamente', 'success');
+                }
+                
+                // Limpiar campos
+                document.getElementById('savings-monto').value = '';
+                document.getElementById('savings-motivo').value = '';
+                
+                // Recargar datos
+                await cargarDatos();
+                
+            } catch (error) {
+                mostrarMensaje('Error: ' + error, 'error');
+            }
+            
+            ocultarOverlay();
         }
         
         async function guardarTargetDiario() {
