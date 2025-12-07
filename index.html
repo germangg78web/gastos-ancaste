@@ -897,13 +897,17 @@
                 if (fecha && hora) {
                     // Generar el timestamp que usamos en el concepto del gasto
                     const partesFecha = fecha.split('-');
-                    const partesHora = hora.replace(/:/g, '').substring(0, 6); // Convertir HH:MM:SS a HHMMSS
+                    const horaLimpia = hora.replace(/:/g, ''); // Convertir HH:MM:SS a HHMMSS
                     const año2d = partesFecha[0].slice(-2);
                     const mes2d = partesFecha[1];
                     const dia2d = partesFecha[2];
-                    const timestamp = `${año2d}${mes2d}${dia2d}-${partesHora}`;
+                    const timestamp = `${año2d}${mes2d}${dia2d}-${horaLimpia}`;
                     const conceptoBuscar = `Exceso de Saving - ${timestamp}`;
                     
+                    console.log('Fecha:', fecha);
+                    console.log('Hora:', hora);
+                    console.log('Hora limpia:', horaLimpia);
+                    console.log('Timestamp:', timestamp);
                     console.log('Buscando gasto con concepto:', conceptoBuscar);
                     
                     // Buscar y eliminar el gasto de exceso si existe
@@ -911,12 +915,28 @@
                     const gastosJson = await gastosRes.json();
                     const gastosActuales = gastosJson.data || [];
                     
-                    const gastoExceso = gastosActuales.find(g => g.usuario === conceptoBuscar);
+                    console.log('Gastos encontrados:', gastosActuales.length);
+                    
+                    // Buscar por coincidencia exacta o parcial
+                    let gastoExceso = gastosActuales.find(g => g.usuario === conceptoBuscar);
+                    
+                    // Si no encuentra exacto, buscar por fecha al menos
+                    if (!gastoExceso) {
+                        const conceptoParcial = `Exceso de Saving - ${año2d}${mes2d}${dia2d}`;
+                        gastoExceso = gastosActuales.find(g => g.usuario && g.usuario.startsWith(conceptoParcial));
+                        console.log('Buscando parcial:', conceptoParcial);
+                    }
+                    
                     if (gastoExceso) {
-                        console.log('Encontrado gasto exceso, eliminando row:', gastoExceso.row);
+                        console.log('Encontrado gasto exceso:', gastoExceso.usuario, 'row:', gastoExceso.row);
                         await fetch(`${API_URL}?action=deleteGasto&row=${gastoExceso.row}`);
                     } else {
-                        console.log('No se encontró gasto de exceso');
+                        console.log('No se encontró gasto de exceso. Conceptos existentes:');
+                        gastosActuales.forEach(g => {
+                            if (g.usuario && g.usuario.includes('Exceso')) {
+                                console.log('  -', g.usuario);
+                            }
+                        });
                     }
                 }
                 
