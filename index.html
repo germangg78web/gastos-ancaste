@@ -603,7 +603,7 @@
     </div>
     
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzJfj60YuM8SfBMYo4aUgZYCWcO33HZiK5iHAfJHsWrGDooutDTwTiWjFaQu6pupEEi/exec';
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzUUSI9VZTr2kQ08c-XdbiH_6I8eGMcaJ30WJWkJ2FvG-jOU2EouzuIri6B_TDlv_45/exec';
         
         let gastosData = [];
         let cuotasData = [];
@@ -856,20 +856,27 @@
                             <th>Fecha</th>
                             <th>Motivo</th>
                             <th>Monto</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>`;
                 
                 // Ordenar por fecha descendente
-                usos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+                usos.sort((a, b) => {
+                    const fechaA = new Date(a.fecha + 'T' + (a.hora || '00:00:00'));
+                    const fechaB = new Date(b.fecha + 'T' + (b.hora || '00:00:00'));
+                    return fechaB - fechaA;
+                });
                 
                 usos.forEach(s => {
                     const fecha = new Date(s.fecha).toLocaleDateString('es-AR');
+                    const hora = s.hora || '';
                     html += `
                         <tr>
-                            <td>${fecha}</td>
+                            <td>${fecha}${hora ? ' ' + hora.substring(0,5) : ''}</td>
                             <td>${s.motivo || '-'}</td>
                             <td style="color: #ff9f43; font-weight: bold;">$${parseFloat(s.monto).toLocaleString('es-AR')}</td>
+                            <td><button class="btn btn-danger btn-small" onclick="eliminarUsoSaving(${s.row}, '${s.fecha}', '${s.hora || ''}')">X</button></td>
                         </tr>
                     `;
                 });
@@ -877,6 +884,49 @@
                 html += '</tbody></table>';
                 containerUsos.innerHTML = html;
             }
+        }
+        
+        async function eliminarUsoSaving(row, fecha, hora) {
+            if (!confirm('¿Eliminar este uso de savings?')) return;
+            
+            mostrarOverlay('Eliminando uso de savings...');
+            
+            try {
+                // Generar el timestamp que usamos en el concepto del gasto
+                if (fecha && hora) {
+                    const partesFecha = fecha.split('-');
+                    const partesHora = hora.split(':');
+                    const año2d = partesFecha[0].slice(-2);
+                    const mes2d = partesFecha[1];
+                    const dia2d = partesFecha[2];
+                    const hora2d = partesHora[0];
+                    const min2d = partesHora[1];
+                    const seg2d = partesHora[2] || '00';
+                    const timestamp = `${año2d}${mes2d}${dia2d}-${hora2d}${min2d}${seg2d}`;
+                    const conceptoBuscar = `Exceso de Saving - ${timestamp}`;
+                    
+                    // Buscar y eliminar el gasto de exceso si existe
+                    const gastosRes = await fetch(`${API_URL}?action=getGastos`);
+                    const gastosJson = await gastosRes.json();
+                    const gastosActuales = gastosJson.data || [];
+                    
+                    const gastoExceso = gastosActuales.find(g => g.usuario === conceptoBuscar);
+                    if (gastoExceso) {
+                        await fetch(`${API_URL}?action=deleteGasto&row=${gastoExceso.row}`);
+                    }
+                }
+                
+                // Eliminar el uso de savings
+                await fetch(`${API_URL}?action=deleteSaving&row=${row}`);
+                
+                mostrarMensaje('Uso de savings eliminado', 'success');
+                await cargarDatos();
+                
+            } catch (error) {
+                mostrarMensaje('Error: ' + error, 'error');
+            }
+            
+            ocultarOverlay();
         }
         
         async function usarSavings() {
@@ -893,28 +943,47 @@
                 return;
             }
             
-            // Calcular ahorro disponible
+            // Calcular ahorro disponible (solo semanas cerradas)
+            const hoy = new Date();
+            const semanaActual = getWeekNumber(hoy);
+            const añoActual = hoy.getFullYear();
+            
             let totalAhorros = 0;
             let totalUsos = 0;
-            savingsData.filter(s => s.tipo === 'Ahorro').forEach(s => totalAhorros += parseFloat(s.monto) || 0);
+            savingsData.filter(s => {
+                if (s.tipo !== 'Ahorro') return false;
+                if (s.año > añoActual) return false;
+                if (s.año === añoActual && s.semana >= semanaActual) return false;
+                return true;
+            }).forEach(s => totalAhorros += parseFloat(s.monto) || 0);
             savingsData.filter(s => s.tipo === 'Uso').forEach(s => totalUsos += parseFloat(s.monto) || 0);
             const ahorroDisponible = totalAhorros - totalUsos;
             
             mostrarOverlay('Procesando uso de savings...');
             
             try {
-                const hoy = new Date();
+                // Generar timestamp: YYMMDD-HHMMSS
+                const año2d = String(hoy.getFullYear()).slice(-2);
+                const mes2d = String(hoy.getMonth() + 1).padStart(2, '0');
+                const dia2d = String(hoy.getDate()).padStart(2, '0');
+                const hora2d = String(hoy.getHours()).padStart(2, '0');
+                const min2d = String(hoy.getMinutes()).padStart(2, '0');
+                const seg2d = String(hoy.getSeconds()).padStart(2, '0');
+                const timestamp = `${año2d}${mes2d}${dia2d}-${hora2d}${min2d}${seg2d}`;
+                
                 const fechaStr = hoy.getFullYear() + '-' + 
                     String(hoy.getMonth() + 1).padStart(2, '0') + '-' + 
                     String(hoy.getDate()).padStart(2, '0');
+                const horaStr = `${hora2d}:${min2d}:${seg2d}`;
                 
-                // Registrar el uso en Savings
-                await fetch(`${API_URL}?action=addSaving&tipo=Uso&año=${hoy.getFullYear()}&semana=${getWeekNumber(hoy)}&targetSemanal=0&gastoSemana=0&monto=${monto}&fecha=${fechaStr}&motivo=${encodeURIComponent(motivo)}`);
+                // Registrar el uso en Savings (con fecha y hora)
+                await fetch(`${API_URL}?action=addSaving&tipo=Uso&año=${hoy.getFullYear()}&semana=${getWeekNumber(hoy)}&targetSemanal=0&gastoSemana=0&monto=${monto}&fecha=${fechaStr}&hora=${horaStr}&motivo=${encodeURIComponent(motivo)}`);
                 
                 // Si el monto excede el ahorro disponible, crear gasto por el exceso
                 if (monto > ahorroDisponible) {
                     const exceso = monto - ahorroDisponible;
-                    await fetch(`${API_URL}?action=addGasto&fecha=${fechaStr}&monto=${exceso}&tipo=BV&categoria=Vario&extraordinario=&usuario=${encodeURIComponent('Exceso de Saving')}`);
+                    const conceptoExceso = `Exceso de Saving - ${timestamp}`;
+                    await fetch(`${API_URL}?action=addGasto&fecha=${fechaStr}&monto=${exceso}&tipo=BV&categoria=Vario&extraordinario=&usuario=${encodeURIComponent(conceptoExceso)}`);
                     mostrarMensaje(`Savings usado. Exceso de $${exceso.toLocaleString('es-AR')} agregado como gasto.`, 'success');
                 } else {
                     mostrarMensaje('Savings usado correctamente', 'success');
