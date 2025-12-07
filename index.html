@@ -800,9 +800,10 @@
             ahorros.forEach(s => totalAhorros += parseFloat(s.monto) || 0);
             usos.forEach(s => totalUsos += parseFloat(s.monto) || 0);
             
-            const ahorroAcumulado = totalAhorros - totalUsos;
+            // El ahorro acumulado no puede ser menor que 0
+            const ahorroAcumulado = Math.max(0, totalAhorros - totalUsos);
             
-            const colorAhorro = ahorroAcumulado >= 0 ? '#00ff88' : '#ff4757';
+            const colorAhorro = ahorroAcumulado > 0 ? '#00ff88' : '#ff9f43';
             document.getElementById('ahorro-acumulado').innerHTML = `$${ahorroAcumulado.toLocaleString('es-AR')}`;
             document.getElementById('ahorro-acumulado').style.color = colorAhorro;
             
@@ -892,18 +893,18 @@
             mostrarOverlay('Eliminando uso de savings...');
             
             try {
-                // Generar el timestamp que usamos en el concepto del gasto
+                // Buscar y eliminar el gasto de exceso si existe
                 if (fecha && hora) {
+                    // Generar el timestamp que usamos en el concepto del gasto
                     const partesFecha = fecha.split('-');
-                    const partesHora = hora.split(':');
+                    const partesHora = hora.replace(/:/g, '').substring(0, 6); // Convertir HH:MM:SS a HHMMSS
                     const año2d = partesFecha[0].slice(-2);
                     const mes2d = partesFecha[1];
                     const dia2d = partesFecha[2];
-                    const hora2d = partesHora[0];
-                    const min2d = partesHora[1];
-                    const seg2d = partesHora[2] || '00';
-                    const timestamp = `${año2d}${mes2d}${dia2d}-${hora2d}${min2d}${seg2d}`;
+                    const timestamp = `${año2d}${mes2d}${dia2d}-${partesHora}`;
                     const conceptoBuscar = `Exceso de Saving - ${timestamp}`;
+                    
+                    console.log('Buscando gasto con concepto:', conceptoBuscar);
                     
                     // Buscar y eliminar el gasto de exceso si existe
                     const gastosRes = await fetch(`${API_URL}?action=getGastos`);
@@ -912,7 +913,10 @@
                     
                     const gastoExceso = gastosActuales.find(g => g.usuario === conceptoBuscar);
                     if (gastoExceso) {
+                        console.log('Encontrado gasto exceso, eliminando row:', gastoExceso.row);
                         await fetch(`${API_URL}?action=deleteGasto&row=${gastoExceso.row}`);
+                    } else {
+                        console.log('No se encontró gasto de exceso');
                     }
                 }
                 
