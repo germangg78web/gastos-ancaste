@@ -793,17 +793,20 @@
             
             const usos = savingsData.filter(s => s.tipo === 'Uso');
             
-            // Calcular ahorro acumulado
+            // Calcular ahorro acumulado (puede ser negativo)
             let totalAhorros = 0;
             let totalUsos = 0;
             
             ahorros.forEach(s => totalAhorros += parseFloat(s.monto) || 0);
             usos.forEach(s => totalUsos += parseFloat(s.monto) || 0);
             
-            // El ahorro acumulado no puede ser menor que 0
-            const ahorroAcumulado = Math.max(0, totalAhorros - totalUsos);
+            const ahorroAcumulado = totalAhorros - totalUsos;
             
-            const colorAhorro = ahorroAcumulado > 0 ? '#00ff88' : '#ff9f43';
+            // Color: verde si positivo, naranja si cero, rojo si negativo
+            let colorAhorro = '#00ff88';
+            if (ahorroAcumulado === 0) colorAhorro = '#ff9f43';
+            if (ahorroAcumulado < 0) colorAhorro = '#ff4757';
+            
             document.getElementById('ahorro-acumulado').innerHTML = `$${ahorroAcumulado.toLocaleString('es-AR')}`;
             document.getElementById('ahorro-acumulado').style.color = colorAhorro;
             
@@ -960,8 +963,13 @@
             }).forEach(s => totalAhorros += parseFloat(s.monto) || 0);
             savingsData.filter(s => s.tipo === 'Uso').forEach(s => totalUsos += parseFloat(s.monto) || 0);
             
-            // El ahorro disponible no puede ser negativo
-            const ahorroDisponible = Math.max(0, totalAhorros - totalUsos);
+            const ahorroDisponible = totalAhorros - totalUsos;
+            
+            // Si el disponible es <= 0, no permitir uso
+            if (ahorroDisponible <= 0) {
+                mostrarMensaje('No hay savings disponible para usar', 'error');
+                return;
+            }
             
             mostrarOverlay('Procesando uso de savings...');
             
