@@ -1511,8 +1511,10 @@
             
             const semanaActual = getWeekNumber(hoy);
             const añoActual = hoy.getFullYear();
-            // Días transcurridos en la semana actual (Dom=1, Lun=2, ..., Sáb=7)
-            const diasTranscurridos = hoy.getDay() + 1;
+            // Días transcurridos en la semana actual SIN incluir hoy (Dom=0, Lun=1, Mar=2, Mié=3...)
+            // getDay(): Dom=0, Lun=1, Mar=2, Mié=3, etc.
+            // Si hoy es Mié(3), transcurrieron Dom, Lun, Mar = 3 días
+            const diasTranscurridos = hoy.getDay() || 7; // Si es domingo (0), usar 7 (semana completa anterior)
             
             // Generar últimas 7 semanas (incluyendo la actual)
             for (let i = 6; i >= 0; i--) {
