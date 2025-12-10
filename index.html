@@ -1509,6 +1509,11 @@
             const targetDiario = parseFloat(document.getElementById('target-diario').value) || 0;
             const targetSemanal = targetDiario * 7;
             
+            const semanaActual = getWeekNumber(hoy);
+            const añoActual = hoy.getFullYear();
+            // Días transcurridos en la semana actual (Dom=1, Lun=2, ..., Sáb=7)
+            const diasTranscurridos = hoy.getDay() + 1;
+            
             // Generar últimas 7 semanas (incluyendo la actual)
             for (let i = 6; i >= 0; i--) {
                 const fecha = new Date(hoy);
@@ -1518,7 +1523,8 @@
                 semanas.push({
                     año: año,
                     semana: numSemana,
-                    label: `S${numSemana}`
+                    label: `S${numSemana}`,
+                    esActual: (año === añoActual && numSemana === semanaActual)
                 });
             }
             
@@ -1535,7 +1541,14 @@
             let html = '';
             semanas.forEach((s, i) => {
                 const altura = (totalesPorSemana[i] / maxTotal) * 160;
-                const colorBarra = getColorByTarget(totalesPorSemana[i], targetSemanal);
+                
+                // Para la semana actual, proyectar el gasto a 7 días para determinar el color
+                let valorParaColor = totalesPorSemana[i];
+                if (s.esActual && diasTranscurridos > 0) {
+                    valorParaColor = (totalesPorSemana[i] / diasTranscurridos) * 7;
+                }
+                const colorBarra = getColorByTarget(valorParaColor, targetSemanal);
+                
                 html += `
                     <div class="bar-group">
                         <div class="bar-value" style="color: #fff; font-weight: bold;">$${Math.round(totalesPorSemana[i] / 1000)}k</div>
