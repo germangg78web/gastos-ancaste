@@ -1511,10 +1511,8 @@
             
             const semanaActual = getWeekNumber(hoy);
             const añoActual = hoy.getFullYear();
-            // Días transcurridos en la semana actual SIN incluir hoy (Dom=0, Lun=1, Mar=2, Mié=3...)
-            // getDay(): Dom=0, Lun=1, Mar=2, Mié=3, etc.
-            // Si hoy es Mié(3), transcurrieron Dom, Lun, Mar = 3 días
-            const diasTranscurridos = hoy.getDay() || 7; // Si es domingo (0), usar 7 (semana completa anterior)
+            // Días transcurridos en la semana actual (Dom=0 -> 0 días, Lun=1 -> 1 día, etc.)
+            const diasTranscurridos = hoy.getDay() || 7; // Si es domingo (0), usar 7 (semana completa)
             
             // Generar últimas 7 semanas (incluyendo la actual)
             for (let i = 6; i >= 0; i--) {
@@ -1544,12 +1542,12 @@
             semanas.forEach((s, i) => {
                 const altura = (totalesPorSemana[i] / maxTotal) * 160;
                 
-                // Para la semana actual, proyectar el gasto a 7 días para determinar el color
-                let valorParaColor = totalesPorSemana[i];
-                if (s.esActual && diasTranscurridos > 0) {
-                    valorParaColor = (totalesPorSemana[i] / diasTranscurridos) * 7;
+                // Para la semana actual, comparar gasto real vs target de días transcurridos
+                let targetParaColor = targetSemanal;
+                if (s.esActual) {
+                    targetParaColor = targetDiario * diasTranscurridos;
                 }
-                const colorBarra = getColorByTarget(valorParaColor, targetSemanal);
+                const colorBarra = getColorByTarget(totalesPorSemana[i], targetParaColor);
                 
                 html += `
                     <div class="bar-group">
@@ -1569,6 +1567,10 @@
             const nombresMeses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
             const targetDiario = parseFloat(document.getElementById('target-diario').value) || 0;
             
+            const mesActual = hoy.getMonth();
+            const añoActual = hoy.getFullYear();
+            const diaActual = hoy.getDate(); // Día del mes (1-31)
+            
             // Generar últimos 7 meses (incluyendo el actual)
             for (let i = 6; i >= 0; i--) {
                 const fecha = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
@@ -1577,7 +1579,8 @@
                     año: fecha.getFullYear(),
                     mes: fecha.getMonth(),
                     label: nombresMeses[fecha.getMonth()],
-                    diasEnMes: diasEnMes
+                    diasEnMes: diasEnMes,
+                    esActual: (fecha.getFullYear() === añoActual && fecha.getMonth() === mesActual)
                 });
             }
             
@@ -1594,8 +1597,14 @@
             let html = '';
             meses.forEach((m, i) => {
                 const altura = (totalesPorMes[i] / maxTotal) * 160;
-                const targetMensual = targetDiario * m.diasEnMes;
-                const colorBarra = getColorByTarget(totalesPorMes[i], targetMensual);
+                
+                // Para el mes actual, comparar gasto real vs target de días transcurridos
+                let targetParaColor = targetDiario * m.diasEnMes;
+                if (m.esActual) {
+                    targetParaColor = targetDiario * diaActual;
+                }
+                const colorBarra = getColorByTarget(totalesPorMes[i], targetParaColor);
+                
                 html += `
                     <div class="bar-group">
                         <div class="bar-value" style="color: #fff; font-weight: bold;">$${Math.round(totalesPorMes[i] / 1000)}k</div>
