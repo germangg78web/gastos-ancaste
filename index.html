@@ -632,11 +632,27 @@
             cargarDatos();
         });
         
+        // Semana Dom-Sáb: el domingo es el primer día de la semana
         function getWeekNumber(d) {
-            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            // Ajustar para que domingo sea día 0 (inicio de semana)
+            // y la semana se cuente desde el primer domingo del año
+            const dayOfWeek = date.getUTCDay(); // 0=Dom, 1=Lun, etc.
+            
+            // Ir al jueves de esta semana (Dom-Sáb) para determinar el año de la semana
+            // En semana Dom-Sáb, sumamos (4 - dayOfWeek) para llegar al jueves
+            date.setUTCDate(date.getUTCDate() + (4 - dayOfWeek));
+            
+            const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+            const yearStartDay = yearStart.getUTCDay();
+            
+            // Ajustar al primer domingo del año o anterior
+            if (yearStartDay !== 0) {
+                yearStart.setUTCDate(yearStart.getUTCDate() - yearStartDay);
+            }
+            
+            const weekNum = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+            return weekNum;
         }
         
         function toggleCuotasSection() {
@@ -1450,7 +1466,7 @@
         
         function renderChartDias() {
             const hoy = new Date();
-            const dias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+            const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
             const añoActual = hoy.getFullYear();
             const semanaActual = getWeekNumber(hoy);
             const targetDiario = parseFloat(document.getElementById('target-diario').value) || 0;
@@ -1461,13 +1477,11 @@
                 return fechaGasto.getFullYear() === añoActual && getWeekNumber(fechaGasto) === semanaActual;
             });
             
-            // Calcular totales por día (índice 0=Lun, 1=Mar, ..., 6=Dom)
+            // Calcular totales por día (índice 0=Dom, 1=Lun, ..., 6=Sáb)
             const totalesPorDia = [0, 0, 0, 0, 0, 0, 0];
             gastosSemanaActual.forEach(g => {
                 const fechaGasto = new Date(g.fecha);
-                let diaSemana = fechaGasto.getDay(); // 0=Dom, 1=Lun, etc.
-                // Convertir: Dom(0)->6, Lun(1)->0, Mar(2)->1, etc.
-                diaSemana = diaSemana === 0 ? 6 : diaSemana - 1;
+                const diaSemana = fechaGasto.getDay(); // 0=Dom, 1=Lun, ..., 6=Sáb
                 totalesPorDia[diaSemana] += parseFloat(g.monto);
             });
             
