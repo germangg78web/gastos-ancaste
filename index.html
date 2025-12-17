@@ -603,7 +603,7 @@
     </div>
     
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzeZ1NQF5ineyhmN24pwAV9Q0bjzxfKMeA-MtZ4D4mBzthDF_bq7IMRPgwPWcjpI4ng/exec';
+        const API_URL = 'https://script.google.com/macros/s/AKfycbxWlQZPD-KSE5kked9emyYO8KmToVL7kum0mdjyEAoX0rMKIFzHPXT7HzpjEssv1Vye/exec';
         
         let gastosData = [];
         let cuotasData = [];
@@ -1182,8 +1182,15 @@
                     // Ordenar de mayor a menor row para no afectar los índices
                     gastosRelacionados.sort((a, b) => b.row - a.row);
                     
-                    for (const gasto of gastosRelacionados) {
-                        await fetch(`${API_URL}?action=deleteGasto&row=${gasto.row}`);
+                    // Obtener datos del primer gasto para el email (antes de eliminar)
+                    const primerGasto = gastosRelacionados[0];
+                    const totalCuotas = gastosRelacionados.length;
+                    
+                    for (let i = 0; i < gastosRelacionados.length; i++) {
+                        const gasto = gastosRelacionados[i];
+                        // Solo enviar email en el primer gasto eliminado
+                        const enviarEmail = (i === 0) ? 'true' : 'false';
+                        await fetch(`${API_URL}?action=deleteGasto&row=${gasto.row}&enviarEmail=${enviarEmail}&totalCuotas=${totalCuotas}`);
                     }
                     
                     // Ahora eliminar la cuota (recargar cuotas para tener rows actualizados)
