@@ -603,7 +603,7 @@
     </div>
     
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzmNlLf7_BJD2a0VTOAmVITmDCEoCTwnx8b12T47-3xy-lkufmqe8BKeH0DCG627kW4/exec';
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzeZ1NQF5ineyhmN24pwAV9Q0bjzxfKMeA-MtZ4D4mBzthDF_bq7IMRPgwPWcjpI4ng/exec';
         
         let gastosData = [];
         let cuotasData = [];
@@ -1096,7 +1096,7 @@
                     await fetch(urlCuota);
                     
                     // Agregar primera cuota como gasto (fecha actual)
-                    const urlGasto1 = `${API_URL}?action=addGasto&fecha=${fecha}&monto=${montoCuota.toFixed(2)}&tipo=${tipo}&categoria=${categoria}&extraordinario=${esEventual}&usuario=${encodeURIComponent(concepto + ' (1/' + totalCuotas + ')')}`;
+                    const urlGasto1 = `${API_URL}?action=addGasto&fecha=${fecha}&monto=${montoCuota.toFixed(2)}&tipo=${tipo}&categoria=${categoria}&extraordinario=${esEventual}&usuario=${encodeURIComponent(concepto + ' (1/' + totalCuotas + ')')}&esCuota=true&numeroCuota=1&totalCuotas=${totalCuotas}&montoTotal=${monto}`;
                     await fetch(urlGasto1);
                     
                     // Agregar cuotas restantes (día 1 de cada mes siguiente)
@@ -1106,7 +1106,7 @@
                         const fechaCuotaFutura = new Date(fechaInicio.getFullYear(), fechaInicio.getMonth() + (i - 1), 1);
                         const fechaStr = fechaCuotaFutura.toISOString().split('T')[0];
                         
-                        const urlGastoFuturo = `${API_URL}?action=addGasto&fecha=${fechaStr}&monto=${montoCuota.toFixed(2)}&tipo=${tipo}&categoria=${categoria}&extraordinario=&usuario=${encodeURIComponent(concepto + ' (' + i + '/' + totalCuotas + ')')}`;
+                        const urlGastoFuturo = `${API_URL}?action=addGasto&fecha=${fechaStr}&monto=${montoCuota.toFixed(2)}&tipo=${tipo}&categoria=${categoria}&extraordinario=&usuario=${encodeURIComponent(concepto + ' (' + i + '/' + totalCuotas + ')')}&esCuota=true&numeroCuota=${i}`;
                         await fetch(urlGastoFuturo);
                     }
                     
