@@ -740,20 +740,24 @@
             if (targetDiario <= 0) return;
             
             const hoy = new Date();
-            const semanaActual = getWeekNumber(hoy);
-            const añoActual = hoy.getFullYear();
+            hoy.setHours(0, 0, 0, 0);
+            
+            // Calcular el inicio de la semana actual (domingo)
+            const inicioSemanaActual = new Date(hoy);
+            inicioSemanaActual.setDate(hoy.getDate() - hoy.getDay());
             
             // Buscar semanas con gastos que no están en savings
             const semanasConGastos = {};
             gastosData.forEach(g => {
                 const fecha = new Date(g.fecha);
+                fecha.setHours(0, 0, 0, 0);
+                
+                // Solo procesar gastos anteriores al inicio de la semana actual
+                if (fecha >= inicioSemanaActual) return;
+                
                 const año = fecha.getFullYear();
                 const semana = getWeekNumber(fecha);
                 const key = `${año}-${semana}`;
-                
-                // No procesar semana actual ni futuras
-                if (año > añoActual) return;
-                if (año === añoActual && semana >= semanaActual) return;
                 
                 if (!semanasConGastos[key]) {
                     semanasConGastos[key] = { año, semana, total: 0 };
@@ -796,15 +800,28 @@
         
         function renderSavings() {
             const hoy = new Date();
-            const semanaActual = getWeekNumber(hoy);
-            const añoActual = hoy.getFullYear();
+            hoy.setHours(0, 0, 0, 0);
             
-            // Filtrar solo ahorros de semanas pasadas (no actuales ni futuras)
+            // Calcular el inicio de la semana actual (domingo)
+            const inicioSemanaActual = new Date(hoy);
+            inicioSemanaActual.setDate(hoy.getDate() - hoy.getDay());
+            
+            // Función auxiliar para obtener fecha de inicio de una semana
+            function getFechaInicioSemana(año, semana) {
+                // Aproximación: primer día del año + (semana-1)*7, ajustado al domingo
+                const primerDia = new Date(año, 0, 1);
+                const primerDomingo = new Date(primerDia);
+                primerDomingo.setDate(primerDia.getDate() - primerDia.getDay());
+                const fechaSemana = new Date(primerDomingo);
+                fechaSemana.setDate(primerDomingo.getDate() + (semana - 1) * 7);
+                return fechaSemana;
+            }
+            
+            // Filtrar solo ahorros de semanas pasadas (anteriores a la semana actual)
             const ahorros = savingsData.filter(s => {
                 if (s.tipo !== 'Ahorro') return false;
-                if (s.año > añoActual) return false;
-                if (s.año === añoActual && s.semana >= semanaActual) return false;
-                return true;
+                const fechaSemana = getFechaInicioSemana(s.año, s.semana);
+                return fechaSemana < inicioSemanaActual;
             });
             
             const usos = savingsData.filter(s => s.tipo === 'Uso');
@@ -966,16 +983,28 @@
             
             // Calcular ahorro disponible (solo semanas cerradas)
             const hoy = new Date();
-            const semanaActual = getWeekNumber(hoy);
-            const añoActual = hoy.getFullYear();
+            hoy.setHours(0, 0, 0, 0);
+            
+            // Calcular el inicio de la semana actual (domingo)
+            const inicioSemanaActual = new Date(hoy);
+            inicioSemanaActual.setDate(hoy.getDate() - hoy.getDay());
+            
+            // Función auxiliar para obtener fecha de inicio de una semana
+            function getFechaInicioSemana(año, semana) {
+                const primerDia = new Date(año, 0, 1);
+                const primerDomingo = new Date(primerDia);
+                primerDomingo.setDate(primerDia.getDate() - primerDia.getDay());
+                const fechaSemana = new Date(primerDomingo);
+                fechaSemana.setDate(primerDomingo.getDate() + (semana - 1) * 7);
+                return fechaSemana;
+            }
             
             let totalAhorros = 0;
             let totalUsos = 0;
             savingsData.filter(s => {
                 if (s.tipo !== 'Ahorro') return false;
-                if (s.año > añoActual) return false;
-                if (s.año === añoActual && s.semana >= semanaActual) return false;
-                return true;
+                const fechaSemana = getFechaInicioSemana(s.año, s.semana);
+                return fechaSemana < inicioSemanaActual;
             }).forEach(s => totalAhorros += parseFloat(s.monto) || 0);
             savingsData.filter(s => s.tipo === 'Uso').forEach(s => totalUsos += parseFloat(s.monto) || 0);
             
